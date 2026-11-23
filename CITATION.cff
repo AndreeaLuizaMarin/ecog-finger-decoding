@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below, and cite the data set (Schalk et al., 2007; BCI Competition IV, data set 4)."
+title: "ecog-finger-decoding: causal decoding of individual finger flexion from human ECoG"
+authors:
+  - family-names: Marin
+    given-names: Andreea Luiza
+version: 0.1.0
+date-released: 2026-11-24
+license: MIT
+repository-code: "https://github.com/AndreeaLuizaMarin/ecog-finger-decoding"
+keywords:
+  - brain-computer interface
+  - electrocorticography
+  - finger decoding
+  - causal decoding
+  - BCI Competition IV

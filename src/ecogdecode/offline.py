@@ -13,13 +13,13 @@ from __future__ import annotations
 import numpy as np
 from scipy import interpolate, signal
 
-from .evaluation import pearson_r as _pearson
-
-
-def pearson_r(a: np.ndarray, b: np.ndarray) -> float:
-    """Pearson r of two 1-D series (0 for a constant series)."""
-    return float(_pearson(a, b)[0])
+from .evaluation import pearson_r
 from .models.linear import lag_matrix
+
+
+def r1d(a: np.ndarray, b: np.ndarray) -> float:
+    """Pearson r of two 1-D series (0 for a constant series)."""
+    return float(pearson_r(a, b)[0])
 
 GLOVE_STEP = 40  # samples: the data glove ran at 25 Hz, the ECoG at 1 kHz
 
@@ -38,7 +38,7 @@ def upsample_hold(values: np.ndarray, times: np.ndarray, n: int) -> np.ndarray:
 
 def score_1khz(pred: np.ndarray, truth: np.ndarray, fingers=(0, 1, 2, 4)) -> tuple[float, list[float]]:
     """Competition metric: Pearson r per finger at 1 kHz, mean over thumb, index, middle, little."""
-    r = [float(pearson_r(pred[:, k], truth[:, k])) for k in range(truth.shape[1])]
+    r = [float(r1d(pred[:, k], truth[:, k])) for k in range(truth.shape[1])]
     return float(np.mean([r[k] for k in fingers])), r
 
 
@@ -127,7 +127,7 @@ class LiangBougrainOffline:
                         continue
                     idx = base + self._cols(p, n_pairs) + extra
                     w = np.linalg.lstsq(gram[np.ix_(idx, idx)], rhs[idx], rcond=None)[0]  # pinv(X'X) X'd
-                    trial[p] = pearson_r(val[:, idx] @ w, y[cut:, f])
+                    trial[p] = r1d(val[:, idx] @ w, y[cut:, f])
                 p_best = max(trial, key=trial.get)
                 if not trial[p_best] > best:
                     break
@@ -283,7 +283,7 @@ def run_flamary_offline(train_ecog, train_flex, test_ecog, log=print, exclude: t
     yz = (flex - y_mean) / y_std
 
     def corr(pred, true):
-        return float(np.mean([pearson_r(pred[:, k], true[:, k]) for k in (0, 1, 2, 4)]))
+        return float(np.mean([r1d(pred[:, k], true[:, k]) for k in (0, 1, 2, 4)]))
 
     # ---- flexion models: Savitzky-Golay low-pass (3rd order, 0.4 s, centred) of every channel, at 250 Hz
     sg = signal.savgol_filter(ecog, window_length=401, polyorder=3, axis=0)[::step]

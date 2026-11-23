@@ -3,7 +3,8 @@
 For every benchmark approach: the seed-0 model's saved test predictions (results/preds/) are scored with the
 competition metric and compared with the seed-0 score stored in results/runs/<key>.json. For every offline replica:
 the saved 25 Hz predictions (results/offline/preds/) are interpolated to 1 kHz, scored, and compared with
-results/offline/replicas.json. Needs the competition data (with the test labels).
+results/offline/replicas.json; the same for the offline FingerFlex replica and the offline LSTM (round 8).
+Needs the competition data (with the test labels).
 
 Usage:
     python scripts/verify_scores.py --data-dir data
@@ -55,7 +56,29 @@ def main() -> None:
             if not note:
                 worst = max(worst, abs(mine - stored))
             print(f"S{s} {key:<22} recomputed {mine:.4f}   stored {stored:.4f}{note}")
+        for name, stored in _round8_offline(res, s):
+            path = res / "offline" / "preds" / f"{name}_sub{s}.npy"
+            if not path.exists():
+                continue
+            pred = np.load(path).astype(np.float64)
+            mine = score_1khz(upsample_linear(pred, np.arange(len(pred)) * 40, len(d.test_ecog)), d.test_flex)[0]
+            print(f"S{s} {name:<22} recomputed {mine:.4f}   stored {stored:.4f}  (saved at 25 Hz from a finer output, "
+                  "so small differences are expected)")
     print(f"largest difference: {worst:.2e}")
+
+
+def _round8_offline(res: Path, s: int) -> list[tuple[str, float]]:
+    """Seed-0 scores of the offline FingerFlex replica (both epoch rules) and of the offline LSTM (approach 5b)."""
+    out = []
+    ff = res / "offline" / "fingerflex" / f"s{s}_seed0.json"
+    if ff.exists():
+        run = json.loads(ff.read_text())
+        out += [(f"fingerflex_{kind}", run[kind]["score"]) for kind in ("published", "validation_epoch")]
+    lstm = res / "offline" / "lstm_offline.json"
+    if lstm.exists():
+        runs = json.loads(lstm.read_text())["subjects"][str(s)]["runs"]
+        out += [("lstm_selected_offline", next(r["score"] for r in runs if r["seed"] == 0))]
+    return out
 
 
 if __name__ == "__main__":

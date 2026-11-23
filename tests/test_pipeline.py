@@ -8,7 +8,7 @@ import scipy.io
 from ecogdecode.approaches import APPROACHES, CLOSED_FORM, NETWORKS, run_network, run_pretrained
 from ecogdecode.config import Protocol, TrainConfig
 from ecogdecode.data import load_subject
-from ecogdecode.pipeline import evaluate, keep_electrodes, prepare, top_electrodes
+from ecogdecode.pipeline import evaluate, keep_electrodes, prepare, top_electrodes, with_test_labels
 
 FAST = TrainConfig(seq_len=64, burn_in=16, windows_per_epoch=32, max_epochs=3, patience=3)
 
@@ -82,3 +82,12 @@ def test_live_replay_matches_offline(key, synthetic_subject, tmp_path):
     res = run_network(prep, key, seed=0, train_cfg=FAST)
     check = replay_online(res.model, res.x, res.x_scaler, short.ecog, prep.cfg, tmp_path / f"{key}.onnx")
     assert check["max_abs_diff_vs_offline"] < 1e-3
+
+
+def test_test_labels_stay_out_of_training_arrays(synthetic_subject):
+    prep = prepare(synthetic_subject)
+    assert np.isnan(prep.y[prep.test_rows]).all() and not np.isnan(prep.y[prep.train_rows]).any()
+    full = with_test_labels(prep, synthetic_subject.test_flex)
+    at_steps = synthetic_subject.test_flex[prep.ends[prep.test_rows] - prep.n_train_samples]
+    np.testing.assert_array_equal(full.y[prep.test_rows], at_steps)
+    assert np.isnan(prep.y[prep.test_rows]).all()  # the original is unchanged

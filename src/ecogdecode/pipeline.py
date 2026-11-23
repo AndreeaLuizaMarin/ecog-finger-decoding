@@ -5,7 +5,8 @@
 
 * Settings and early stopping are chosen on the validation block only.
 * With ``Protocol.refit`` the chosen model is then retrained on the whole training segment.
-* The official test labels are read once, by ``score_test``.
+* The official test labels never enter ``Prepared``: test rows of ``y`` are NaN. Scoring takes them as a
+  separate argument (``evaluate``); an analysis that needs them in the array asks for ``with_test_labels``.
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ class Prepared:
     subject: int
     cfg: FeatureConfig
     x: np.ndarray  # (n_steps, n_features) raw causal features of the whole recording
-    y: np.ndarray  # (n_steps, 5) finger flexion at each step (test rows only ever used for scoring)
+    y: np.ndarray  # (n_steps, 5) finger flexion at each step; NaN in the test rows
     ends: np.ndarray  # sample index of each step
     n_train_samples: int
     fit_rows: slice
@@ -45,8 +46,8 @@ class Prepared:
 def prepare(data: SubjectData, cfg: FeatureConfig = DEFAULT_FEATURES, protocol: Protocol = DEFAULT_PROTOCOL) -> Prepared:
     """Compute causal features over the continuous recording and define the chronological split."""
     x, ends = extract_features(data.ecog, cfg)
-    test_flex = data.test_flex if data.test_flex is not None else np.full((len(data.test_ecog), 5), np.nan)
-    y = np.concatenate([data.train_flex, test_flex])[ends].astype(np.float32)
+    hidden = np.full((len(data.test_ecog), 5), np.nan, dtype=np.float32)  # test labels stay out of training arrays
+    y = np.concatenate([data.train_flex, hidden])[ends].astype(np.float32)
     n_train_steps = int(np.searchsorted(ends, data.n_train))  # steps that end inside the training segment
     n_val = int(round(protocol.val_fraction * (n_train_steps - protocol.warmup_steps)))
     split = n_train_steps - n_val
@@ -58,7 +59,7 @@ def prepare(data: SubjectData, cfg: FeatureConfig = DEFAULT_FEATURES, protocol: 
 @dataclass
 class Scaled:
     x: np.ndarray  # standardised, artefact-masked features
-    y: np.ndarray  # standardised targets (test rows are meaningless placeholders)
+    y: np.ndarray  # standardised targets (zero in the test rows unless ``with_test_labels`` filled them)
     x_scaler: Standardiser
     y_scaler: Standardiser
 
@@ -89,6 +90,14 @@ def standardise(prep: Prepared, rows: slice, adaptive_steps: float = 0.0) -> Sca
         x = adaptive_normalise(x, rows.stop, adaptive_steps)
     x, _ = mask_artefact_channels(x, prep.cfg.n_per_channel, prep.cfg.artefact_z)
     return Scaled(x, ys.transform(np.nan_to_num(prep.y)), xs, ys)
+
+
+def with_test_labels(prep: Prepared, test_flex: np.ndarray) -> Prepared:
+    """A copy of ``prep`` whose test rows hold the official test labels, for post-hoc analyses that monitor the
+    test set over training (offline_study.py, part 'selection'). Nothing that makes a choice may use it."""
+    y = prep.y.copy()
+    y[prep.test_rows] = test_flex[prep.ends[prep.test_rows] - prep.n_train_samples]
+    return replace(prep, y=y)
 
 
 def evaluate(prep: Prepared, pred_steps: np.ndarray, test_flex: np.ndarray) -> dict:

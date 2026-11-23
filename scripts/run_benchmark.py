@@ -68,7 +68,8 @@ def main() -> None:
     record_test_look("blind test (run_benchmark.py)", {"approaches": args.approaches, "subjects": args.subjects,
                                                        "seeds": args.seeds})
     for s, p in preps.items():
-        np.save(out / "preds" / f"truth_sub{s}.npy", p.y[p.test_rows])
+        np.save(out / "preds" / f"truth_sub{s}.npy",
+                datas[s].test_flex[p.ends[p.test_rows] - p.n_train_samples].astype(np.float32))
         np.save(out / "preds" / f"times_sub{s}.npy", p.test_times)
 
     for key in args.approaches:

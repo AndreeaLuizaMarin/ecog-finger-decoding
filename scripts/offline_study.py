@@ -36,7 +36,7 @@ from ecogdecode.models import LSTMDecoder, train_sequence_model
 from ecogdecode.models.linear import lag_matrix
 from ecogdecode.offline import (run_fingerflex_offline, run_flamary_offline, run_liang_offline, score_1khz,
                                upsample_hold, upsample_linear)
-from ecogdecode.pipeline import keep_electrodes, prepare, standardise, top_electrodes
+from ecogdecode.pipeline import keep_electrodes, prepare, standardise, top_electrodes, with_test_labels
 from ecogdecode.provenance import record_test_look
 
 OUT = Path("results/offline")
@@ -163,7 +163,7 @@ def part_selection(data_dir: str, seeds=(0, 1, 2), max_epochs: int = 60) -> None
     report = {}
     for s in SUBJECTS:
         d = load_subject(data_dir, s)
-        full = prepare(d)
+        full = with_test_labels(prepare(d), d.test_flex)  # the test block is monitored after every epoch
         prep = keep_electrodes(full, top_electrodes(full, full.train_rows, ELECTRODES_5B[s]))
         sc = standardise(prep, prep.train_rows)
         rows = []

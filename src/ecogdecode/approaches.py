@@ -198,12 +198,14 @@ NETWORKS: dict[str, Callable[[np.ndarray, np.ndarray, int, int], torch.nn.Module
 
 
 def run_network(prep: Prepared, key: str, seed: int, protocol: Protocol = DEFAULT_PROTOCOL,
-                model: torch.nn.Module | None = None, train_cfg: TrainConfig | None = None) -> RunResult:
+                model: torch.nn.Module | None = None, train_cfg: TrainConfig | None = None,
+                electrodes: int | None = None) -> RunResult:
     """Early stopping on validation, choice of output smoothing on validation, then (``protocol.refit``)
-    retraining from the same initial weights for the chosen number of epochs on the whole training segment."""
+    retraining from the same initial weights for the chosen number of epochs on the whole training segment.
+    ``electrodes`` keeps that many electrodes (approach 5b's rule) instead of the approach's per-patient count."""
     approach = APPROACHES.get(key, Approach(key, "", "", "", ""))
     cfg = replace(train_cfg or approach.train_cfg, seed=seed)
-    n_keep = (approach.electrodes or {}).get(prep.subject)
+    n_keep = electrodes or (approach.electrodes or {}).get(prep.subject)
     full = prep
     if n_keep:  # electrodes chosen on the fit rows for model selection
         prep = keep_electrodes(full, top_electrodes(full, full.fit_rows, n_keep))
