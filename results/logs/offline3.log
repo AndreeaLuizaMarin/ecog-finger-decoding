@@ -1,0 +1,3 @@
+S3 liang_offline_without_e49      r = 0.594
+S3   chosen: {'labels': 'instants', 'ar_window': '300 samples at 250 Hz', 'ts_ms': 300, 'k': 10, 'lambda_s': 0.01, 'val_r': 0.6319626728172438, 'state_acc': 0.63356, 'tau_ms': 100, 'lambda_k': 10000.0, 'keep': 0.25, 'r_true_states': 0.9003640259522663}
+S3 flamary_offline_without_e49    r = 0.523

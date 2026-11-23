@@ -1,0 +1,9 @@
+  return _generic_rnn(
+lstm               val 0.566   test 0.493 ± 0.020   (S1 0.431  S2 0.398  S3 0.651)   672.4 s
+neural_ode         val 0.341   test 0.264 ± 0.014   (S1 0.182  S2 0.120  S3 0.489)   1798.9 s
+multipatient_lstm  val 0.489   test 0.479 ± 0.006   (S1 0.434  S2 0.378  S3 0.625)   506.4 s
+pretrained_lstm    val 0.461   test 0.467 ± 0.006   (S1 0.437  S2 0.352  S3 0.612)   576.8 s
+tcn                val 0.471   test 0.464 ± 0.018   (S1 0.432  S2 0.330  S3 0.630)   873.2 s
+gated_transient    val 0.477   test 0.452 ± 0.009   (S1 0.495  S2 0.297  S3 0.564)   401.2 s
+manifold_pca       val 0.556   test 0.477 ± 0.016   (S1 0.448  S2 0.368  S3 0.616)   363.6 s
+manifold_contrastive val 0.534   test 0.481 ± 0.014   (S1 0.448  S2 0.383  S3 0.613)   1489.4 s

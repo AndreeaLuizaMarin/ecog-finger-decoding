@@ -1,0 +1,7 @@
+tcn                          val 0.470 -> smoothed 0.471   S1 0.471 (320 ms)  S2 0.287 (40 ms)  S3 0.655 (0 ms)   382.0 s
+pretrained_multipatient      val 0.488 -> smoothed 0.488   S1 0.420 (0 ms)  S2 0.357 (0 ms)  S3 0.688 (0 ms)   431.6 s
+pretrained_contrastive       val 0.476 -> smoothed 0.477   S1 0.460 (0 ms)  S2 0.348 (0 ms)  S3 0.622 (0 ms)   307.5 s
+lstm_h256                    val 0.533 -> smoothed 0.534   S1 0.533 (0 ms)  S2 0.351 (40 ms)  S3 0.719 (0 ms)   254.8 s
+lstm_2layer                  val 0.494 -> smoothed 0.494   S1 0.479 (0 ms)  S2 0.354 (0 ms)  S3 0.648 (0 ms)   155.3 s
+lstm_drop04                  val 0.524 -> smoothed 0.526   S1 0.505 (0 ms)  S2 0.375 (40 ms)  S3 0.699 (0 ms)   118.6 s
+lstm_h64                     val 0.457 -> smoothed 0.460   S1 0.434 (320 ms)  S2 0.282 (40 ms)  S3 0.664 (0 ms)   78.7 s

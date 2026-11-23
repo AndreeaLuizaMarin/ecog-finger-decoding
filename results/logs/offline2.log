@@ -1,0 +1,24 @@
+S1   chosen: {'labels': 'movement periods', 'ar_window': '300 samples at 250 Hz', 'ts_ms': 100, 'k': 20, 'lambda_s': 0.05, 'val_r': 0.41997291725049557, 'state_acc': 0.5444, 'tau_ms': 100, 'lambda_k': 1000.0, 'keep': 0.25, 'r_true_states': 0.7975416718928258}
+S1 flamary_offline          r = 0.407
+S2   chosen: {'labels': 'movement periods', 'ar_window': '300 samples at 250 Hz', 'ts_ms': 200, 'k': 10, 'lambda_s': 0.01, 'val_r': 0.2640086782870161, 'state_acc': 0.36356, 'tau_ms': 200, 'lambda_k': 10000.0, 'keep': 0.5, 'r_true_states': 0.7515025636853551}
+S2 flamary_offline          r = 0.275
+S3   chosen: {'labels': 'instants', 'ar_window': '300 samples at 250 Hz', 'ts_ms': 300, 'k': 10, 'lambda_s': 0.01, 'val_r': 0.6314408158567444, 'state_acc': 0.63356, 'tau_ms': 100, 'lambda_k': 10000.0, 'keep': 0.25, 'r_true_states': 0.8996080371216348}
+S3 flamary_offline          r = 0.315
+S1 live: causal features, past lags                     r = 0.396
+S1 zero-phase centred features, past lags               r = 0.417
+S1 zero-phase centred features, past and future lags    r = 0.467
+S2 live: causal features, past lags                     r = 0.282
+S2 zero-phase centred features, past lags               r = 0.281
+S2 zero-phase centred features, past and future lags    r = 0.307
+S3 live: causal features, past lags                     r = 0.531
+S3 zero-phase centred features, past lags               r = 0.551
+S3 zero-phase centred features, past and future lags    r = 0.572
+S1 seed 0: validation-chosen epoch 24 -> 0.538; best test epoch 8 -> 0.603
+S1 seed 1: validation-chosen epoch 18 -> 0.562; best test epoch 10 -> 0.594
+S1 seed 2: validation-chosen epoch 19 -> 0.536; best test epoch 11 -> 0.568
+S2 seed 0: validation-chosen epoch 22 -> 0.485; best test epoch 23 -> 0.514
+S2 seed 1: validation-chosen epoch 17 -> 0.510; best test epoch 12 -> 0.540
+S2 seed 2: validation-chosen epoch 20 -> 0.498; best test epoch 15 -> 0.518
+S3 seed 0: validation-chosen epoch 12 -> 0.652; best test epoch 34 -> 0.715
+S3 seed 1: validation-chosen epoch 12 -> 0.682; best test epoch 25 -> 0.741
+S3 seed 2: validation-chosen epoch 10 -> 0.682; best test epoch 29 -> 0.730

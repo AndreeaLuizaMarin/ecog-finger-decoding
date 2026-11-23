@@ -1,0 +1,50 @@
+{
+  "lstm": {
+    "1": {
+      "lost_electrode": 0,
+      "n_electrodes": 62,
+      "intact": 0.4202528974095822,
+      "one_electrode_lost": 0.29778997104725463
+    },
+    "2": {
+      "lost_electrode": 23,
+      "n_electrodes": 48,
+      "intact": 0.4392989540925908,
+      "one_electrode_lost": 0.33133902645752095
+    },
+    "3": {
+      "lost_electrode": 53,
+      "n_electrodes": 64,
+      "intact": 0.5766932098867432,
+      "one_electrode_lost": 0.48768796125509684
+    },
+    "mean": {
+      "intact": 0.47874835379630537,
+      "one_electrode_lost": 0.37227231958662416
+    }
+  },
+  "lstm_selected": {
+    "1": {
+      "lost_electrode": 0,
+      "n_electrodes": 32,
+      "intact": 0.5109750656536354,
+      "one_electrode_lost": 0.3448273047870303
+    },
+    "2": {
+      "lost_electrode": 23,
+      "n_electrodes": 8,
+      "intact": 0.47322972070239566,
+      "one_electrode_lost": 0.33270753561070976
+    },
+    "3": {
+      "lost_electrode": 53,
+      "n_electrodes": 32,
+      "intact": 0.6383728885349611,
+      "one_electrode_lost": 0.5606620836004184
+    },
+    "mean": {
+      "intact": 0.540859224963664,
+      "one_electrode_lost": 0.4127323079993861
+    }
+  }
+}

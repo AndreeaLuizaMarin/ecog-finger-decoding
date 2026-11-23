@@ -1,0 +1,4 @@
+manifold_contrastive_lstm256_aug val 0.529 -> smoothed 0.530   S1 0.530 (0 ms)  S2 0.361 (40 ms)  S3 0.700 (0 ms)   497.4 s
+manifold_pca_lstm256_aug     val 0.549 -> smoothed 0.550   S1 0.560 (0 ms)  S2 0.372 (40 ms)  S3 0.718 (0 ms)   163.3 s
+h256_drop04_aug05            val 0.568 -> smoothed 0.572   S1 0.522 (0 ms)  S2 0.455 (80 ms)  S3 0.739 (0 ms)   255.4 s
+h256_drop04_aug_cos40        val 0.534 -> smoothed 0.538   S1 0.508 (0 ms)  S2 0.376 (80 ms)  S3 0.729 (0 ms)   365.5 s

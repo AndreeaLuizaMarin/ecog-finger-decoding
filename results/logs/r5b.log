@@ -1,0 +1,4 @@
+t_drop05                     val 0.552 -> smoothed 0.554   S1 0.536 (0 ms)  S2 0.389 (40 ms)  S3 0.736 (0 ms)   400.3 s
+t_wpe256                     val 0.569 -> smoothed 0.572   S1 0.568 (0 ms)  S2 0.400 (80 ms)  S3 0.749 (0 ms)   552.8 s
+t_finehg                     val 0.527 -> smoothed 0.531   S1 0.519 (0 ms)  S2 0.357 (80 ms)  S3 0.718 (0 ms)   362.0 s
+t_batch32                    val 0.535 -> smoothed 0.537   S1 0.540 (0 ms)  S2 0.352 (40 ms)  S3 0.718 (0 ms)   657.7 s

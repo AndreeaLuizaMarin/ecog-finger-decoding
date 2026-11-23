@@ -1,0 +1,21 @@
+S1 {'live (as scored)': 0.511, 'centred Gaussian, sigma 40 ms, interpolated': 0.556, 'centred Gaussian, sigma 60 ms, interpolated': 0.569, 'centred Gaussian, sigma 120 ms, interpolated': 0.584}
+S2 {'live (as scored)': 0.473, 'centred Gaussian, sigma 40 ms, interpolated': 0.488, 'centred Gaussian, sigma 60 ms, interpolated': 0.49, 'centred Gaussian, sigma 120 ms, interpolated': 0.489}
+S3 {'live (as scored)': 0.638, 'centred Gaussian, sigma 40 ms, interpolated': 0.652, 'centred Gaussian, sigma 60 ms, interpolated': 0.65, 'centred Gaussian, sigma 120 ms, interpolated': 0.638}
+S1 liang_offline            r = 0.443
+S1 liang_offline_intercept  r = 0.445
+S1 liang_causal             r = 0.299
+S1   classifier: {'ts_ms': 100, 'k': 62, 'lambda_s': 0.001, 'acc': 0.24897779239730436}
+S1   flexion models: {'tau_ms': 100, 'lambda_k': 1000.0, 'keep': 0.25, 'r': 0.8697729286515097}
+S1 flamary_offline          r = 0.165
+S2 liang_offline            r = 0.313
+S2 liang_offline_intercept  r = 0.316
+S2 liang_causal             r = 0.211
+S2   classifier: {'ts_ms': 300, 'k': 10, 'lambda_s': 0.001, 'acc': 0.2477728552703249}
+S2   flexion models: {'tau_ms': 200, 'lambda_k': 10000.0, 'keep': 0.5, 'r': 0.795910913136729}
+S2 flamary_offline          r = 0.168
+S3 liang_offline            r = 0.594
+S3 liang_offline_intercept  r = 0.456
+S3 liang_causal             r = 0.430
+S3   classifier: {'ts_ms': 300, 'k': 20, 'lambda_s': 0.01, 'acc': 0.5294151391798182}
+S3   flexion models: {'tau_ms': 100, 'lambda_k': 10000.0, 'keep': 0.25, 'r': 0.8996080371216348}
+S3 flamary_offline          r = 0.325

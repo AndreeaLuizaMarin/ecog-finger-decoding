@@ -1,0 +1,4 @@
+t_lr2e-3                     val 0.554 -> smoothed 0.554   S1 0.530 (0 ms)  S2 0.382 (40 ms)  S3 0.751 (0 ms)   327.6 s
+t_wd1e-1                     val 0.563 -> smoothed 0.564   S1 0.557 (0 ms)  S2 0.393 (40 ms)  S3 0.742 (0 ms)   398.3 s
+t_seq512                     val 0.517 -> smoothed 0.520   S1 0.487 (0 ms)  S2 0.336 (80 ms)  S3 0.738 (0 ms)   650.2 s
+t_lr5e-4                     val 0.545 -> smoothed 0.548   S1 0.548 (0 ms)  S2 0.378 (40 ms)  S3 0.717 (0 ms)   534.9 s

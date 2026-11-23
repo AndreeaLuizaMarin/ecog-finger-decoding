@@ -1,0 +1,7 @@
+mamba              val 0.442   test 0.456 ± 0.010   (S1 0.469  S2 0.284  S3 0.614)   2977.4 s
+s4d                val 0.397   test 0.406 ± 0.013   (S1 0.342  S2 0.303  S3 0.574)   1623.7 s
+gated_lfp          val 0.435   test 0.433 ± 0.011   (S1 0.435  S2 0.282  S3 0.582)   326.6 s
+gated_all          val 0.425   test 0.436 ± 0.010   (S1 0.454  S2 0.273  S3 0.582)   351.0 s
+liang_bougrain     val 0.485   test 0.363 ± 0.000   (S1 0.464  S2 0.278  S3 0.347)   298.0 s
+switching_linear   val 0.451   test 0.425 ± 0.000   (S1 0.475  S2 0.261  S3 0.539)   32.1 s
+kalman             val 0.368   test 0.373 ± 0.000   (S1 0.419  S2 0.199  S3 0.502)   14.0 s

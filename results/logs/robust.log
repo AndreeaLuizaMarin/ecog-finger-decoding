@@ -1,0 +1,6 @@
+S1 lstm           62 electrodes   intact 0.420   electrode 0 lost 0.298
+S1 lstm_selected  32 electrodes   intact 0.511   electrode 0 lost 0.345
+S2 lstm           48 electrodes   intact 0.439   electrode 23 lost 0.331
+S2 lstm_selected   8 electrodes   intact 0.473   electrode 23 lost 0.333
+S3 lstm           64 electrodes   intact 0.577   electrode 53 lost 0.488
+S3 lstm_selected  32 electrodes   intact 0.638   electrode 53 lost 0.561

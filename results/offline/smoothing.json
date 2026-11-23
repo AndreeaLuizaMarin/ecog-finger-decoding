@@ -1,0 +1,30 @@
+{
+  "1": {
+    "live (as scored)": 0.510974258167374,
+    "linear interpolation only (uses the next output)": 0.5409805035859754,
+    "centred Gaussian, sigma 40 ms, interpolated": 0.5563969840596028,
+    "centred Gaussian, sigma 60 ms, interpolated": 0.5686854581187274,
+    "centred Gaussian, sigma 120 ms, interpolated": 0.5838672615684555
+  },
+  "2": {
+    "live (as scored)": 0.47323194648432215,
+    "linear interpolation only (uses the next output)": 0.48597274391607936,
+    "centred Gaussian, sigma 40 ms, interpolated": 0.4883415430962767,
+    "centred Gaussian, sigma 60 ms, interpolated": 0.489995954867271,
+    "centred Gaussian, sigma 120 ms, interpolated": 0.4890256637704924
+  },
+  "3": {
+    "live (as scored)": 0.6383766837485048,
+    "linear interpolation only (uses the next output)": 0.6522648530036924,
+    "centred Gaussian, sigma 40 ms, interpolated": 0.6518839585926746,
+    "centred Gaussian, sigma 60 ms, interpolated": 0.6501955318292243,
+    "centred Gaussian, sigma 120 ms, interpolated": 0.6376771641945884
+  },
+  "mean": {
+    "live (as scored)": 0.540860962800067,
+    "linear interpolation only (uses the next output)": 0.5597393668352489,
+    "centred Gaussian, sigma 40 ms, interpolated": 0.5655408285828514,
+    "centred Gaussian, sigma 60 ms, interpolated": 0.5696256482717409,
+    "centred Gaussian, sigma 120 ms, interpolated": 0.5701900298445121
+  }
+}

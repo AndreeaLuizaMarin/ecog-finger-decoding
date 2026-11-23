@@ -1,0 +1,9 @@
+# one line-ending convention on every platform (the code is edited on Windows and Linux)
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.mp4 binary
+*.npy binary
+*.mat binary
+*.zip binary
+*.onnx binary

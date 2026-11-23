@@ -1,0 +1,2 @@
+t_top8_warp                  val 0.667 -> smoothed 0.667   S1 0.533 (0 ms)  S2 0.713 (0 ms)  S3 0.756 (0 ms)   356.8 s
+t_top4                       val 0.635 -> smoothed 0.635   S1 0.588 (0 ms)  S2 0.586 (40 ms)  S3 0.732 (0 ms)   267.2 s

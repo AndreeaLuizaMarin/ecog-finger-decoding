@@ -1,0 +1,2 @@
+t_top32_cd                   val 0.591 -> smoothed 0.591   S1 0.552 (0 ms)  S2 0.485 (40 ms)  S3 0.737 (0 ms)   336.3 s
+t_top48                      val 0.578 -> smoothed 0.580   S1 0.569 (0 ms)  S2 0.406 (40 ms)  S3 0.765 (0 ms)   339.7 s
