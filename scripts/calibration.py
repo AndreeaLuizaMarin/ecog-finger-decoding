@@ -66,10 +66,14 @@ def pretrained_on_others(preps: dict[int, Prepared], target: int, seed: int) -> 
 
 def run(data_dir: str, subject: int, seed: int, threads: int) -> None:
     torch.set_num_threads(threads)
-    datas = {s: load_subject(data_dir, s) for s in SUBJECTS}
-    preps = {s: prepare(d) for s, d in datas.items()}
+    preps, data = {}, None
+    for s in SUBJECTS:  # keep the features only; the raw recordings are not needed after this (memory)
+        d = load_subject(data_dir, s)
+        preps[s] = prepare(d)
+        if s == subject:
+            data = replace(d, train_ecog=d.train_ecog[:0], test_ecog=d.test_ecog[:0])
     record_test_look("calibration curve (calibration.py)", {"subject": subject, "seed": seed})
-    prep, data = preps[subject], datas[subject]
+    prep = preps[subject]
     base = pretrained_on_others(preps, subject, seed)
     rows = []
     for minutes in MINUTES:
