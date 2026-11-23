@@ -44,7 +44,6 @@ PRETTY = {
     "kalman": "4 Kalman filter",
     "fingerflex": "14 FingerFlex, causal",
     "possm": "15 POSSM-style",
-    "possm_pretrained": "15b POSSM-style, pretrained",
 }
 
 plt.rcParams.update(

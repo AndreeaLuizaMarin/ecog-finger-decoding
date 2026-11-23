@@ -20,7 +20,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .models.possm import POSSMDecoder
 from .models.recurrent import LSTMDecoder
 
 
@@ -125,59 +124,3 @@ def pretrain_supervised(
         nn.utils.clip_grad_norm_(list(params.values()), 1.0)
         opt.step()
     return {s: copy.deepcopy(dec) for s, dec in decoders.items()}
-
-
-def pretrain_possm(
-    xs: dict[int, np.ndarray],
-    ys: dict[int, np.ndarray],
-    fit_rows: dict[int, slice],
-    n_per_channel: int,
-    seed: int = 0,
-    steps: int = 600,
-    seq_len: int = 256,
-    burn_in: int = 50,
-    batch_size: int = 16,
-    lr: float = 1e-3,
-    gain_jitter: float = 0.3,
-    feature_noise: float = 0.3,
-) -> dict[int, POSSMDecoder]:
-    """Multi-patient training of the POSSM-style decoder: every weight is shared except the electrode embeddings,
-    which are per patient (electrode count and placement differ). Returns per-subject decoders, each a copy of the
-    shared model with that subject's embeddings, to be fine-tuned or adapted per subject."""
-    torch.manual_seed(seed)
-    rng = np.random.default_rng(seed)
-    first = next(iter(xs))
-    shared = POSSMDecoder(xs[first].shape[1], n_per_channel)
-    d_model = shared.tokenizer.latents.shape[1]
-    scale = shared.tokenizer.embedding_scale
-    embeddings = {s: nn.Parameter(scale * torch.randn(x.shape[1] // n_per_channel, d_model)) for s, x in xs.items()}
-    params = [*shared.parameters(), *embeddings.values()]
-    opt = torch.optim.AdamW(params, lr=lr, weight_decay=1e-2)
-    xt = {s: torch.from_numpy(x) for s, x in xs.items()}
-    yt = {s: torch.from_numpy(y) for s, y in ys.items()}
-    offsets = np.arange(seq_len)
-    for _ in range(steps):
-        loss = 0.0
-        shared.train()
-        for s in xs:
-            n_el = embeddings[s].shape[0]
-            shared.tokenizer.n_channels = n_el
-            shared.tokenizer.electrode = embeddings[s]
-            starts = rng.integers(fit_rows[s].start, fit_rows[s].stop - seq_len, size=batch_size)
-            idx = torch.from_numpy(starts[:, None] + offsets)
-            xb = xt[s][idx]
-            xb = xb + (gain_jitter * torch.randn(batch_size, 1, n_el)).repeat_interleave(n_per_channel, dim=-1)
-            xb = xb + feature_noise * torch.randn_like(xb)
-            loss = loss + F.mse_loss(shared(xb)[:, burn_in:], yt[s][idx][:, burn_in:])
-        loss = loss / len(xs)
-        opt.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm_(params, 1.0)
-        opt.step()
-    out = {}
-    for s, emb in embeddings.items():
-        dec = copy.deepcopy(shared)
-        dec.tokenizer.n_channels = emb.shape[0]
-        dec.tokenizer.electrode = nn.Parameter(emb.detach().clone())
-        out[s] = dec
-    return out

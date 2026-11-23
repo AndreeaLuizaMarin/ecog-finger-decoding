@@ -44,7 +44,7 @@ from .models import (
     train_sequence_model,
 )
 from .pipeline import Prepared, keep_electrodes, standardise, top_electrodes
-from .pretrain import pretrain_contrastive, pretrain_possm, pretrain_supervised
+from .pretrain import pretrain_contrastive, pretrain_supervised
 
 
 @dataclass(frozen=True)
@@ -133,14 +133,6 @@ APPROACHES: dict[str, Approach] = {
             "new",
             "network",
             streamable=True,
-            train_cfg=TUNED_LSTM,
-        ),
-        Approach(
-            "possm_pretrained",
-            "15b",
-            "POSSM-style decoder, multi-patient pretraining + fine-tuning",
-            "new",
-            "pretrained",
             train_cfg=TUNED_LSTM,
         ),
     ]
@@ -330,22 +322,14 @@ def run_pretrained(
     steps: int = 600,
     train_cfg: TrainConfig | None = None,
     supervised: bool = False,
-    possm: bool = False,
 ) -> dict[int, RunResult]:
     """Pretraining on every subject's fit rows, then per-subject fine-tuning.
 
     ``supervised=False``: contrastive, without labels (approach 11). ``supervised=True``: multi-patient
-    training with labels, one shared core and per-patient input/output layers (approach 11b). ``possm=True``: the
-    POSSM-style decoder trained on every patient, sharing every weight but the electrode embeddings (15b)."""
+    training with labels, one shared core and per-patient input/output layers (approach 11b)."""
     scaled = {s: standardise(p, p.fit_rows) for s, p in preps.items()}
     rows = {s: p.fit_rows for s, p in preps.items()}
-    if possm:
-        npc = next(iter(preps.values())).cfg.n_per_channel
-        decoders = pretrain_possm(
-            {s: v.x for s, v in scaled.items()}, {s: v.y for s, v in scaled.items()}, rows, npc, seed=seed, steps=steps
-        )
-        losses = [float("nan"), float("nan")]
-    elif supervised:
+    if supervised:
         decoders = pretrain_supervised(
             {s: v.x for s, v in scaled.items()}, {s: v.y for s, v in scaled.items()}, rows, seed=seed, steps=steps
         )
@@ -354,9 +338,7 @@ def run_pretrained(
         decoders, losses = pretrain_contrastive({s: v.x for s, v in scaled.items()}, rows, seed=seed, steps=steps)
     out = {}
     for s, prep in preps.items():
-        key = "possm_pretrained" if possm else "lstm"
-        cfg = train_cfg or (APPROACHES[key].train_cfg if possm else TrainConfig())
-        res = run_network(prep, key, seed, protocol, model=decoders[s], train_cfg=cfg)
+        res = run_network(prep, "lstm", seed, protocol, model=decoders[s], train_cfg=train_cfg or TrainConfig())
         res.selected["pretrain_loss_first_last"] = [losses[0], losses[-1]]
         out[s] = res
     return out
@@ -445,9 +427,7 @@ def run(
     results: dict[int, list[RunResult]] = {s: [] for s in preps}
     for seed in protocol.seeds:
         if approach.trainer == "pretrained":
-            per_subject = run_pretrained(
-                preps, seed, protocol, supervised=key == "multipatient_lstm", possm=key == "possm_pretrained"
-            )
+            per_subject = run_pretrained(preps, seed, protocol, supervised=key == "multipatient_lstm")
         elif approach.trainer == "fingerflex":
             per_subject = {s: run_fingerflex(p, datas[s], seed, protocol) for s, p in preps.items()}
         else:

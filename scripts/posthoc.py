@@ -46,7 +46,6 @@ PAIRS = [
     ("lstm", "s4d"),
     ("lstm", "wiener"),
     ("lstm", "possm"),
-    ("possm_pretrained", "possm"),
     ("wiener", "liang_bougrain"),
     ("wiener", "kalman"),
 ]

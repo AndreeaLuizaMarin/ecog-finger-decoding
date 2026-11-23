@@ -68,10 +68,9 @@ def test_networks_train_and_refit(key, prepared, synthetic_subject):
     assert result.selected["epochs"] >= 1 and np.all(np.isfinite(result.pred))
 
 
-@pytest.mark.parametrize("possm", [False, True])
-def test_pretraining_runs(prepared, possm):
+def test_pretraining_runs(prepared):
     other = keep_electrodes(dataclasses.replace(prepared, subject=2), np.arange(5))  # patients differ in electrodes
-    out = run_pretrained({1: prepared, 2: other}, seed=0, steps=5, train_cfg=FAST, possm=possm)
+    out = run_pretrained({1: prepared, 2: other}, seed=0, steps=5, train_cfg=FAST)
     assert set(out) == {1, 2} and all(np.all(np.isfinite(r.pred)) for r in out.values())
 
 
