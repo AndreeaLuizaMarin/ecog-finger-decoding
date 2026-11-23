@@ -1,6 +1,6 @@
 """Offline versus live: what does a decoder gain from what a live system cannot have?
 
-Four parts, each saved to results/offline/:
+Parts, each saved to results/offline/:
 
 1. replicas  - the two best competition entries as published (offline: zero-phase filters, windows that reach
                ahead, future time shifts), next to the same winner made causal, and to the live versions in the
@@ -11,6 +11,8 @@ Four parts, each saved to results/offline/:
                callback that monitors the test set does), for the best live decoder (approach 5b).
 4. smoothing - a centred (non-causal) Gaussian smoother on the live decoder's output, as used for
                offline results, versus the causal smoother chosen on validation.
+5. fingerflex - FingerFlex (Lomtev et al., 2023) as published, with the epoch chosen on the test set (as
+               published) or on validation; one file per subject and seed, then merged.
 
 Usage:
     python scripts/offline_study.py --data-dir data --parts liang flamary wiener selection smoothing
@@ -32,8 +34,10 @@ from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.evaluation import score
 from ecogdecode.models import LSTMDecoder, train_sequence_model
 from ecogdecode.models.linear import lag_matrix
-from ecogdecode.offline import run_flamary_offline, run_liang_offline, score_1khz, upsample_hold, upsample_linear
+from ecogdecode.offline import (run_fingerflex_offline, run_flamary_offline, run_liang_offline, score_1khz,
+                               upsample_hold, upsample_linear)
 from ecogdecode.pipeline import keep_electrodes, prepare, standardise, top_electrodes
+from ecogdecode.provenance import record_test_look
 
 OUT = Path("results/offline")
 
@@ -203,16 +207,64 @@ def part_smoothing(data_dir: str) -> None:
     save("smoothing", report)
 
 
+def part_fingerflex(data_dir: str, subjects=SUBJECTS, seeds=(0,)) -> None:
+    """FingerFlex as published (offline), epoch chosen on the test set (as published) or on validation. One file
+    per subject and seed in results/offline/fingerflex/, so runs can share the machine; then merged."""
+    folder = OUT / "fingerflex"
+    folder.mkdir(parents=True, exist_ok=True)
+    for s in subjects:
+        d = load_subject(data_dir, s)
+        for seed in seeds:
+            print(f"S{s} seed {seed}", flush=True)
+            res = run_fingerflex_offline(d.train_ecog, d.train_flex, d.test_ecog, d.test_flex, seed=seed)
+            for kind in ("published", "validation_epoch"):
+                if seed == 0:
+                    save_pred(f"fingerflex_{kind}", s, res[kind]["pred_1khz"])
+                res[kind].pop("pred_1khz")
+            (folder / f"s{s}_seed{seed}.json").write_text(json.dumps(res, indent=2))
+            print(f"S{s} seed {seed}: published {res['published']['score']:.3f} (epoch {res['published']['epoch']}), "
+                  f"epoch chosen on validation {res['validation_epoch']['score']:.3f} "
+                  f"(epoch {res['validation_epoch']['epoch']})", flush=True)
+    merge_fingerflex()
+
+
+def merge_fingerflex() -> None:
+    """results/offline/fingerflex.json: per subject and overall, mean and SD over seeds of both variants."""
+    files = sorted((OUT / "fingerflex").glob("s*_seed*.json"))
+    runs: dict[str, dict[int, dict]] = {}
+    for f in files:
+        s, seed = f.stem.split("_seed")
+        runs.setdefault(s[1:], {})[int(seed)] = json.loads(f.read_text())
+    seeds = sorted(set.intersection(*(set(r) for r in runs.values())))
+    report: dict = {"seeds": seeds}
+    for kind in ("published", "validation_epoch"):
+        per_subject = {s: [runs[s][seed][kind] for seed in seeds] for s in sorted(runs, key=int)}
+        means = {s: {m: float(np.mean([r[m] for r in rs])) for m in ("score", "notebook_metric")}
+                 for s, rs in per_subject.items()}
+        seed_scores = [np.mean([per_subject[s][i]["score"] for s in per_subject]) for i in range(len(seeds))]
+        report[kind] = {"subjects": means, "epochs": {s: [r["epoch"] for r in rs] for s, rs in per_subject.items()},
+                        "score": float(np.mean([m["score"] for m in means.values()])),
+                        "notebook_metric": float(np.mean([m["notebook_metric"] for m in means.values()])),
+                        "sd": float(np.std(seed_scores))}
+    save("fingerflex", report)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--parts", nargs="+", default=["liang", "flamary", "wiener", "selection", "smoothing"])
     ap.add_argument("--threads", type=int, default=2)
+    ap.add_argument("--subjects", type=int, nargs="+", default=list(SUBJECTS), help="fingerflex part only")
+    ap.add_argument("--seeds", type=int, nargs="+", default=[0], help="fingerflex part only")
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
+    record_test_look("offline study (offline_study.py)", {"parts": args.parts})
     for part in args.parts:
-        {"liang": part_liang, "flamary": part_flamary, "diagnostics": part_diagnostics, "wiener": part_wiener, "selection": part_selection,
-         "smoothing": part_smoothing}[part](args.data_dir)
+        if part == "fingerflex":
+            part_fingerflex(args.data_dir, args.subjects, tuple(args.seeds))
+            continue
+        {"liang": part_liang, "flamary": part_flamary, "diagnostics": part_diagnostics, "wiener": part_wiener,
+         "selection": part_selection, "smoothing": part_smoothing}[part](args.data_dir)
 
 
 if __name__ == "__main__":

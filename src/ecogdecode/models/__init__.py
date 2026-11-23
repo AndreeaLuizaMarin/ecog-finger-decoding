@@ -5,6 +5,7 @@ from .gated import LeakyIntegrator, StateGatedDecoder, StateGatedStep, Transient
 from .kalman import DiscriminativeKalmanDecoder, KalmanDecoder, LaggedKalmanDecoder
 from .manifold import ContrastiveManifold, ManifoldGatedDecoder, PCAManifold, build_manifold_gated
 from .linear import LaggedRidge, lag_matrix, select_ridge
+from .possm import POSSMDecoder, POSSMStep
 from .recurrent import LSTMDecoder, LSTMStep, ODEDecoder
 from .ssm import MambaDecoder, S4DDecoder, S4DLayer, S4DStep, selective_scan
 from .training import predict_sequence, train_sequence_model
@@ -13,5 +14,5 @@ __all__ = ["LiangBougrainDecoder", "SwitchingLinearDecoder", "finger_states", "s
            "LeakyIntegrator", "StateGatedDecoder", "StateGatedStep", "TransientGatedDecoder", "KalmanDecoder",
            "LaggedKalmanDecoder", "DiscriminativeKalmanDecoder",
            "ContrastiveManifold", "ManifoldGatedDecoder", "PCAManifold", "build_manifold_gated",
-           "LaggedRidge", "lag_matrix", "select_ridge", "LSTMDecoder", "LSTMStep", "ODEDecoder", "MambaDecoder",
+           "LaggedRidge", "lag_matrix", "select_ridge", "POSSMDecoder", "POSSMStep", "LSTMDecoder", "LSTMStep", "ODEDecoder", "MambaDecoder",
            "S4DDecoder", "S4DLayer", "S4DStep", "selective_scan", "TCNDecoder", "predict_sequence", "train_sequence_model"]

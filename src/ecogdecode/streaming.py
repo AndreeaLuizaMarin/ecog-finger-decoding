@@ -18,7 +18,8 @@ from scipy import signal
 from .config import DEFAULT_FEATURES, FeatureConfig
 from .export import export_onnx, latency_summary, onnx_session
 from .features import Standardiser, band_filters, mask_artefact_channels, notch_filters, rereference
-from .models import LSTMDecoder, LSTMStep, S4DDecoder, S4DStep, StateGatedDecoder, StateGatedStep
+from .models import (LSTMDecoder, LSTMStep, POSSMDecoder, POSSMStep, S4DDecoder, S4DStep, StateGatedDecoder,
+                     StateGatedStep)
 
 
 class StreamingFeatureExtractor:
@@ -60,6 +61,9 @@ def single_step(model: torch.nn.Module):
     if isinstance(model, StateGatedDecoder):
         step = StateGatedStep(model)
         return step, step.initial_state(), ["zg", "ze"], ["zg_out", "ze_out"]
+    if isinstance(model, POSSMDecoder):
+        step = POSSMStep(model)
+        return step, (step.initial_state(),), ["h"], ["h_out"]
     raise TypeError(f"no single-step form for {type(model).__name__}")
 
 

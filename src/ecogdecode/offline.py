@@ -376,3 +376,80 @@ def run_flamary_offline(train_ecog, train_flex, test_ecog, log=print, exclude: t
     chosen = {k: v for k, v in best.items() if k not in ("ranking", "states")}
     return {"pred_1khz": upsample_linear(pred[n_tr:], test_t, len(test_ecog)),
             "states_test_250hz": est_states[n_tr:], "chosen": chosen}
+
+
+# --------------------------------------------------------------------------- FingerFlex (Lomtev et al., 2023)
+def run_fingerflex_offline(train_ecog: np.ndarray, train_flex: np.ndarray, test_ecog: np.ndarray,
+                           test_flex: np.ndarray, seed: int = 0, cfg=None, log=print) -> dict:
+    """FingerFlex as published (``fingerflex.py``, offline form), trained twice from the same initial weights.
+
+    Run A, the published procedure: all training data, the test recording decoded after every epoch, and the epoch
+    whose test correlation (centred Gaussian, sigma 6 samples, all five fingers) is best is kept.
+    Run B, this repository's protocol: the first 80 % of the training recording, the epoch chosen with the same
+    criterion on the last 20 %. Run A trained for that many epochs is the refit on all training data, so its test
+    output at Run B's epoch is the offline score with the epoch chosen without the test labels.
+    Each is scored twice: the notebooks' metric (100 Hz, all five fingers, centred Gaussian sigma 1 sample) and the
+    competition metric (1 kHz, ring finger excluded, outputs linearly interpolated between 10 ms steps).
+    """
+    import copy
+
+    import torch
+    from scipy.ndimage import gaussian_filter1d
+
+    from . import fingerflex as ff
+
+    cfg = cfg or ff.FingerFlexConfig(seed=seed)
+    s = ff.SHIFT_OFFLINE
+    x_tr_raw = ff.recording_features(train_ecog, offline=True)
+    x_te_raw = ff.recording_features(test_ecog, offline=True)
+    y_tr, y_te = ff.glove_100hz(train_flex), ff.glove_100hz(test_flex)
+    n = min(len(x_tr_raw), len(y_tr))
+    split = int(0.8 * n)
+    yt = y_te[s:len(x_te_raw)]  # fingers 200 ms after each test input
+
+    def scaled(rows: slice):
+        sc = ff.RobustScaler().fit(x_tr_raw[rows])
+        lo, hi = y_tr[rows].min(0), y_tr[rows].max(0)
+        return sc.transform(x_tr_raw[: n - s]), sc.transform(x_te_raw[: len(x_te_raw) - s]), (y_tr[s:n] - lo) / (hi - lo)
+
+    def smooth(out: np.ndarray, sigma: float) -> np.ndarray:
+        return gaussian_filter1d(out, sigma, axis=0)
+
+    torch.manual_seed(seed)
+    xa, _, ya = scaled(slice(0, split))
+    model = ff.FingerFlexNet(xa.shape[1], causal=False, dropout=cfg.dropout)
+    initial = copy.deepcopy(model)
+    val = slice(split - s, n - s)  # inputs whose fingers are the last 20 % of the training recording
+    best_b = {"val": -np.inf, "epoch": 0}
+
+    def on_val(epoch: int, m) -> dict:
+        r = ff.corr_mean(smooth(ff.predict(m, xa)[val], 6), ya[val])
+        if r > best_b["val"]:
+            best_b.update(val=r, epoch=epoch)
+        return {"val": r, "stop": epoch - best_b["epoch"] >= cfg.patience}
+
+    hist_b = ff.train(model, xa, ya.astype(np.float32), slice(0, split - s), cfg, cfg.max_epochs, on_val)
+    log(f"  run B (epoch chosen on validation): {[round(h['val'], 3) for h in hist_b]}")
+
+    xa, xt, ya = scaled(slice(0, n))
+    model, outs = initial, []
+
+    def on_test(epoch: int, m) -> dict:
+        outs.append(ff.predict(m, xt))
+        return {"test_monitor": ff.corr_mean(smooth(outs[-1], 6), yt)}
+
+    hist_a = ff.train(model, xa, ya.astype(np.float32), slice(0, n - s), cfg, cfg.max_epochs, on_test)
+    log(f"  run A (test monitored): {[round(h['test_monitor'], 3) for h in hist_a]}")
+
+    def scores(out: np.ndarray) -> dict:
+        out = smooth(out, 1)
+        t = (np.arange(len(out)) + s) * ff.DECIM  # 1 kHz sample of the finger each output estimates
+        pred_1khz = upsample_linear(out, t, len(test_flex))
+        comp, per = score_1khz(pred_1khz, test_flex)
+        return {"notebook_metric": ff.corr_mean(out, yt), "score": comp, "r": per, "pred_1khz": pred_1khz}
+
+    e_test = int(np.argmax([h["test_monitor"] for h in hist_a]))
+    e_val = int(np.argmax([h["val"] for h in hist_b]))
+    return {"published": {"epoch": e_test + 1, **scores(outs[e_test])},
+            "validation_epoch": {"epoch": e_val + 1, **scores(outs[e_val])},
+            "history_b_val": [h["val"] for h in hist_b], "history_a_test": [h["test_monitor"] for h in hist_a]}

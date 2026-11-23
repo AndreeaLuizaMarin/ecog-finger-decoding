@@ -31,7 +31,7 @@ def test_split_is_chronological(synthetic_subject):
 
 def test_registry_is_complete():
     for key, a in APPROACHES.items():
-        assert key in (CLOSED_FORM if a.trainer == "closed_form" else NETWORKS) or a.trainer == "pretrained"
+        assert key in (CLOSED_FORM if a.trainer == "closed_form" else NETWORKS) or a.trainer in ("pretrained", "fingerflex")
 
 
 @pytest.fixture(scope="module")
@@ -63,12 +63,14 @@ def test_networks_train_and_refit(key, prepared, synthetic_subject):
     assert result.selected["epochs"] >= 1 and np.all(np.isfinite(result.pred))
 
 
-def test_pretraining_runs(prepared):
-    out = run_pretrained({1: prepared, 2: dataclasses.replace(prepared, subject=2)}, seed=0, steps=5, train_cfg=FAST)
-    assert set(out) == {1, 2}
+@pytest.mark.parametrize("possm", [False, True])
+def test_pretraining_runs(prepared, possm):
+    other = keep_electrodes(dataclasses.replace(prepared, subject=2), np.arange(5))  # patients differ in electrodes
+    out = run_pretrained({1: prepared, 2: other}, seed=0, steps=5, train_cfg=FAST, possm=possm)
+    assert set(out) == {1, 2} and all(np.all(np.isfinite(r.pred)) for r in out.values())
 
 
-@pytest.mark.parametrize("key", ["lstm", "s4d", "gated_lfp"])
+@pytest.mark.parametrize("key", ["lstm", "s4d", "gated_lfp", "possm"])
 def test_live_replay_matches_offline(key, synthetic_subject, tmp_path):
     pytest.importorskip("onnxruntime")
     from ecogdecode.data import SubjectData

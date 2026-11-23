@@ -1,8 +1,12 @@
 import numpy as np
 import pytest
+import torch
 from scipy import signal
 
 from ecogdecode.data import FS, SubjectData
+
+# PyTorch's default (every logical core) makes the many small operations of these tests very slow on hybrid CPUs
+torch.set_num_threads(4)
 
 
 def make_synthetic_subject(n_train=40_000, n_test=20_000, n_channels=8, seed=0) -> SubjectData:

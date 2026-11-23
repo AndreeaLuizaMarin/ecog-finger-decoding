@@ -2,9 +2,10 @@ import numpy as np
 import pytest
 import torch
 
-from ecogdecode.models import (TCNDecoder, build_manifold_gated, KalmanDecoder, LaggedRidge, LiangBougrainDecoder, LSTMDecoder, LSTMStep, MambaDecoder,
-                               ODEDecoder, S4DDecoder, S4DLayer, S4DStep, StateGatedDecoder, StateGatedStep,
-                               TransientGatedDecoder, finger_states, lag_matrix, selective_scan)
+from ecogdecode.models import (KalmanDecoder, LaggedRidge, LiangBougrainDecoder, LSTMDecoder, LSTMStep, MambaDecoder,
+                               ODEDecoder, POSSMDecoder, POSSMStep, S4DDecoder, S4DLayer, S4DStep, StateGatedDecoder,
+                               StateGatedStep, TCNDecoder, TransientGatedDecoder, build_manifold_gated, finger_states,
+                               lag_matrix, selective_scan)
 
 
 def test_lag_matrix():
@@ -62,6 +63,7 @@ def _manifold(kind, backbone="leaky"):
 
 
 NETS = [LSTMDecoder, S4DDecoder, MambaDecoder, ODEDecoder, TCNDecoder, lambda n: StateGatedDecoder(n, 6), _transient,
+        lambda n: POSSMDecoder(n, 6),
         _manifold("pca"), _manifold("pca", "lstm"), _manifold("contrastive")]
 
 
@@ -99,11 +101,12 @@ def test_s4d_convolution_equals_recurrence():
     torch.testing.assert_close(layer(u)[0], torch.stack(ys), rtol=1e-4, atol=1e-4)
 
 
-@pytest.mark.parametrize("kind", ["lstm", "s4d", "gated"])
+@pytest.mark.parametrize("kind", ["lstm", "s4d", "gated", "possm"])
 def test_streaming_step_matches_full_sequence(kind):
     torch.manual_seed(0)
-    model = {"lstm": LSTMDecoder(12), "s4d": S4DDecoder(12), "gated": StateGatedDecoder(12, 6)}[kind].eval()
-    step = {"lstm": LSTMStep, "s4d": S4DStep, "gated": StateGatedStep}[kind](model)
+    model = {"lstm": LSTMDecoder(12), "s4d": S4DDecoder(12), "gated": StateGatedDecoder(12, 6),
+             "possm": POSSMDecoder(12, 6)}[kind].eval()
+    step = {"lstm": LSTMStep, "s4d": S4DStep, "gated": StateGatedStep, "possm": POSSMStep}[kind](model)
     x = torch.randn(1, 50, 12)
     with torch.no_grad():
         full = model(x)[0]

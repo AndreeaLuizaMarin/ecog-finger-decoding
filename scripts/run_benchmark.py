@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import platform
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -28,6 +27,7 @@ from ecogdecode.approaches import APPROACHES, run
 from ecogdecode.config import FeatureConfig, Protocol
 from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.pipeline import evaluate, prepare
+from ecogdecode.provenance import environment, record_test_look
 from ecogdecode.streaming import replay_online
 
 GATED = ("gated_lfp", "gated_all", "gated_transient")
@@ -53,6 +53,8 @@ def main() -> None:
     ap.add_argument("--no-refit", action="store_true", help="keep the early-stopped models (no final retraining)")
     ap.add_argument("--streaming", action="store_true", help="export seed 0 to ONNX and replay the recording live")
     ap.add_argument("--threads", type=int, default=1)
+    ap.add_argument("--tag", default="", help="write runs/parts/<key>__<tag>.json, one part of a run split over processes "
+                    "(scripts/merge_runs.py joins the parts)")
     args = ap.parse_args()
 
     torch.set_num_threads(args.threads)
@@ -63,6 +65,8 @@ def main() -> None:
 
     datas = {s: load_subject(args.data_dir, s) for s in args.subjects}
     preps = {s: prepare(d, FeatureConfig(), protocol) for s, d in datas.items()}
+    record_test_look("blind test (run_benchmark.py)", {"approaches": args.approaches, "subjects": args.subjects,
+                                                       "seeds": args.seeds})
     for s, p in preps.items():
         np.save(out / "preds" / f"truth_sub{s}.npy", p.y[p.test_rows])
         np.save(out / "preds" / f"times_sub{s}.npy", p.test_times)
@@ -72,8 +76,7 @@ def main() -> None:
         results = run(key, preps, datas, protocol)
         report = {"key": key, "number": approach.number, "label": approach.label, "family": approach.family,
                   "protocol": asdict(protocol), "train_config": asdict(approach.train_cfg),
-                  "environment": {"python": platform.python_version(), "torch": torch.__version__,
-                                  "threads": args.threads}, "subjects": {}}
+                  "environment": environment(args.threads), "subjects": {}}
         for s, runs in results.items():
             prep, test_flex = preps[s], datas[s].test_flex
             per_run = [{"val_score": r.val_score, "selected": r.selected, **evaluate(prep, r.pred, test_flex)}
@@ -82,7 +85,9 @@ def main() -> None:
                      "score": float(np.mean([p["score"] for p in per_run])),  # mean over single models
                      "sd": float(np.std([p["score"] for p in per_run])),
                      "r": np.mean([p["r"] for p in per_run], axis=0).tolist(), "runs": per_run}
-            np.save(out / "preds" / f"{key}_sub{s}.npy", prep.test_predictions(runs[0].pred).astype(np.float32))
+            seed0 = [r for r in runs if r.selected.get("seed", 0) == 0]  # figures use the seed-0 model
+            if seed0:
+                np.save(out / "preds" / f"{key}_sub{s}.npy", prep.test_predictions(seed0[0].pred).astype(np.float32))
             if key in GATED:
                 with torch.no_grad():
                     gates = runs[0].model.eval().gates(torch.from_numpy(runs[0].x)[None])[0].numpy()
@@ -96,7 +101,9 @@ def main() -> None:
         seed_means = [np.mean([e["runs"][i]["score"] for e in report["subjects"].values()]) for i in range(len(runs))]
         report["sd"] = float(np.std(seed_means))  # spread over seeds of the subject-averaged single-model score
         report["seconds"] = round(time.time() - t0, 1)
-        (out / "runs" / f"{key}.json").write_text(json.dumps(report, indent=2, default=to_json))
+        target = out / "runs" / "parts" / f"{key}__{args.tag}.json" if args.tag else out / "runs" / f"{key}.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(report, indent=2, default=to_json))
         per_subject = "  ".join(f"S{s} {e['score']:.3f}" for s, e in report["subjects"].items())
         print(f"{key:<18} val {report['val_score']:.3f}   test {report['score']:.3f} ± {report['sd']:.3f}   ({per_subject})   "
               f"{report['seconds']} s", flush=True)

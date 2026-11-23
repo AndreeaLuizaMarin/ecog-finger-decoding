@@ -17,16 +17,17 @@ from typing import Callable
 import numpy as np
 import torch
 
+from . import fingerflex as ff
 from .config import DEFAULT_PROTOCOL, LIANG_FEATURES, Protocol, TrainConfig
 from .data import SubjectData
 from .evaluation import causal_ema, choose_smoothing, score
 from .features import Standardiser, extract_features, mask_artefact_channels
 from .models import (KalmanDecoder, LaggedRidge, LiangBougrainDecoder, LSTMDecoder, MambaDecoder, ODEDecoder,
-                     S4DDecoder, StateGatedDecoder, SwitchingLinearDecoder, TCNDecoder, TransientGatedDecoder,
+                     POSSMDecoder, S4DDecoder, StateGatedDecoder, SwitchingLinearDecoder, TCNDecoder, TransientGatedDecoder,
                      build_manifold_gated,
                      finger_states, predict_sequence, select_ridge, select_switching, train_sequence_model)
 from .pipeline import Prepared, keep_electrodes, standardise, top_electrodes
-from .pretrain import pretrain_contrastive, pretrain_supervised
+from .pretrain import pretrain_contrastive, pretrain_possm, pretrain_supervised
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,11 @@ APPROACHES: dict[str, Approach] = {a.key: a for a in [
     Approach("manifold_pca", "12", "Manifold-gated decoder, PCA manifold", "new", "network", train_cfg=TUNED_LSTM),
     Approach("manifold_contrastive", "13", "Manifold-gated decoder, CEBRA-style manifold", "new", "network",
              train_cfg=TUNED_LSTM),
+    Approach("fingerflex", "14", "FingerFlex (Lomtev et al., 2023), made causal", "deep", "fingerflex"),
+    Approach("possm", "15", "POSSM-style electrode-token decoder (after Ryoo et al., 2025)", "new", "network",
+             streamable=True, train_cfg=TUNED_LSTM),
+    Approach("possm_pretrained", "15b", "POSSM-style decoder, multi-patient pretraining + fine-tuning", "new",
+             "pretrained", train_cfg=TUNED_LSTM),
 ]}
 
 
@@ -173,6 +179,7 @@ NETWORKS: dict[str, Callable[[np.ndarray, np.ndarray, int, int], torch.nn.Module
     "mamba": lambda x, y, npc, seed: MambaDecoder(x.shape[1]),
     "neural_ode": lambda x, y, npc, seed: ODEDecoder(x.shape[1]),
     "tcn": lambda x, y, npc, seed: TCNDecoder(x.shape[1]),
+    "possm": lambda x, y, npc, seed: POSSMDecoder(x.shape[1], npc),
     "gated_lfp": lambda x, y, npc, seed: StateGatedDecoder(x.shape[1], npc, gate_features="slow"),
     "gated_all": lambda x, y, npc, seed: StateGatedDecoder(x.shape[1], npc, gate_features="all"),
     "gated_transient": lambda x, y, npc, seed: TransientGatedDecoder.from_training_data(x, npc),
@@ -231,14 +238,21 @@ def run_network(prep: Prepared, key: str, seed: int, protocol: Protocol = DEFAUL
 
 
 def run_pretrained(preps: dict[int, Prepared], seed: int, protocol: Protocol = DEFAULT_PROTOCOL,
-                   steps: int = 600, train_cfg: TrainConfig | None = None, supervised: bool = False) -> dict[int, RunResult]:
+                   steps: int = 600, train_cfg: TrainConfig | None = None, supervised: bool = False,
+                   possm: bool = False) -> dict[int, RunResult]:
     """Pretraining on every subject's fit rows, then per-subject fine-tuning.
 
     ``supervised=False``: contrastive, without labels (approach 11). ``supervised=True``: multi-patient
-    training with labels, one shared core and per-patient input/output layers (approach 11b)."""
+    training with labels, one shared core and per-patient input/output layers (approach 11b). ``possm=True``: the
+    POSSM-style decoder trained on every patient, sharing every weight but the electrode embeddings (15b)."""
     scaled = {s: standardise(p, p.fit_rows) for s, p in preps.items()}
     rows = {s: p.fit_rows for s, p in preps.items()}
-    if supervised:
+    if possm:
+        npc = next(iter(preps.values())).cfg.n_per_channel
+        decoders = pretrain_possm({s: v.x for s, v in scaled.items()}, {s: v.y for s, v in scaled.items()}, rows,
+                                  npc, seed=seed, steps=steps)
+        losses = [float("nan"), float("nan")]
+    elif supervised:
         decoders = pretrain_supervised({s: v.x for s, v in scaled.items()}, {s: v.y for s, v in scaled.items()},
                                        rows, seed=seed, steps=steps)
         losses = [float("nan"), float("nan")]
@@ -246,10 +260,68 @@ def run_pretrained(preps: dict[int, Prepared], seed: int, protocol: Protocol = D
         decoders, losses = pretrain_contrastive({s: v.x for s, v in scaled.items()}, rows, seed=seed, steps=steps)
     out = {}
     for s, prep in preps.items():
-        res = run_network(prep, "lstm", seed, protocol, model=decoders[s], train_cfg=train_cfg or TrainConfig())
+        key = "possm_pretrained" if possm else "lstm"
+        cfg = train_cfg or (APPROACHES[key].train_cfg if possm else TrainConfig())
+        res = run_network(prep, key, seed, protocol, model=decoders[s], train_cfg=cfg)
         res.selected["pretrain_loss_first_last"] = [losses[0], losses[-1]]
         out[s] = res
     return out
+
+
+def run_fingerflex(prep: Prepared, data: SubjectData, seed: int, protocol: Protocol = DEFAULT_PROTOCOL,
+                   cfg: ff.FingerFlexConfig | None = None) -> RunResult:
+    """Approach 14: FingerFlex made causal (``fingerflex.py``), under the shared protocol.
+
+    Its own features and training (every 2.56 s window at stride 1, 20 epochs, Adam, half MSE + half cosine
+    distance), the epoch with the best validation score kept, a causal output smoother chosen on validation, then a
+    refit on the whole training segment from the same initial weights for that many epochs. The 100 Hz output is
+    read at the end of every 40 ms step (the latest output available then) and held, like every other decoder."""
+    cfg = replace(cfg or ff.FingerFlexConfig(), seed=seed)
+    ends100 = prep.ends // ff.DECIM  # 100 Hz sample of each step's end: its output uses ECoG up to that sample
+
+    def rows100(rows: slice) -> slice:
+        return slice(int(ends100[rows.start]), int(ends100[rows.stop - 1]) + 1)
+
+    y100 = ff.glove_100hz(data.train_flex)
+
+    def scaled(rows: slice) -> tuple[np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]:
+        """Features normalised with statistics of the ECoG up to the end of ``rows`` (training data only), robust
+        scaler and finger min-max scaling fitted on ``rows``."""
+        x = ff.recording_features(data.ecog, offline=False, stats_end=int(rows.stop) * ff.DECIM)
+        x = ff.RobustScaler().fit(x[rows]).transform(x)
+        lo, hi = y100[rows].min(0), y100[rows].max(0)
+        return x, ((y100 - lo) / (hi - lo)).astype(np.float32), (lo, hi)
+
+    def to_steps(out100: np.ndarray) -> np.ndarray:
+        return out100[np.minimum(ends100, len(out100) - 1)]
+
+    fit = rows100(prep.fit_rows)
+    x, y, _ = scaled(fit)
+    torch.manual_seed(seed)
+    model = ff.FingerFlexNet(x.shape[1], causal=True, dropout=cfg.dropout)
+    initial = copy.deepcopy(model)
+    best: dict = {"val_score": -np.inf}
+
+    def on_epoch(epoch: int, m: torch.nn.Module) -> dict:
+        steps = to_steps(ff.predict(m, x))
+        val = float(score(steps[prep.val_rows], prep.y[prep.val_rows]))
+        if val > best["val_score"]:
+            best.update(val_score=val, epoch=epoch, steps=steps)
+        return {"val_score": val, "stop": epoch - best["epoch"] >= cfg.patience}
+
+    history = ff.train(model, x, y, fit, cfg, cfg.max_epochs, on_epoch)
+    ctx = max(prep.val_rows.start - TrainConfig().val_context, 0)
+    tau, val_score = choose_smoothing(best["steps"][ctx: prep.val_rows.stop], prep.y[prep.val_rows],
+                                      protocol.smoothing_ms, context=prep.val_rows.start - ctx)
+    selected = {"epochs": best["epoch"] + 1, "smooth_ms": tau, "val_score_unsmoothed": best["val_score"],
+                "val_score": val_score, "seed": seed, "val_by_epoch": [h["val_score"] for h in history]}
+    del x, y
+    train = rows100(prep.train_rows)
+    x, y, (lo, hi) = scaled(train)
+    model = initial
+    ff.train(model, x, y, train, cfg, best["epoch"] + 1)
+    pred = causal_ema(to_steps(ff.predict(model, x)) * (hi - lo) + lo, tau)
+    return RunResult(pred, val_score, selected)
 
 
 # ----------------------------------------------------------------------------- entry point
@@ -263,7 +335,10 @@ def run(key: str, preps: dict[int, Prepared], datas: dict[int, SubjectData],
     results: dict[int, list[RunResult]] = {s: [] for s in preps}
     for seed in protocol.seeds:
         if approach.trainer == "pretrained":
-            per_subject = run_pretrained(preps, seed, protocol, supervised=key == "multipatient_lstm")
+            per_subject = run_pretrained(preps, seed, protocol, supervised=key == "multipatient_lstm",
+                                         possm=key == "possm_pretrained")
+        elif approach.trainer == "fingerflex":
+            per_subject = {s: run_fingerflex(p, datas[s], seed, protocol) for s, p in preps.items()}
         else:
             per_subject = {s: run_network(p, key, seed, protocol) for s, p in preps.items()}
         for s, res in per_subject.items():
