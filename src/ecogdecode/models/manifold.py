@@ -17,6 +17,7 @@ The decoder itself uses the same neuromorphic-style building blocks as the other
 leaky integrators and a softmax gate over linear experts. The manifold is fitted first and kept
 fixed while the gate and experts are trained.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -40,7 +41,7 @@ class PCAManifold(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x @ self.P.T
 
-    def fit(self, x: np.ndarray, y: np.ndarray | None = None, seed: int = 0) -> "PCAManifold":
+    def fit(self, x: np.ndarray, y: np.ndarray | None = None, seed: int = 0) -> PCAManifold:
         with torch.no_grad():
             self.P.copy_(torch.as_tensor(_pca(x, self.dim)))
         return self
@@ -49,14 +50,24 @@ class PCAManifold(nn.Module):
 class ContrastiveManifold(nn.Module):
     """Causal encoder: features -> leaky integrators -> point on the unit sphere."""
 
-    def __init__(self, n_features: int, dim: int = 8, hidden: int = 64, steps: int = 800, window: int = 64,
-                 batch_size: int = 128, temperature: float = 0.1, behaviour_noise: float = 0.1):
+    def __init__(
+        self,
+        n_features: int,
+        dim: int = 8,
+        hidden: int = 64,
+        steps: int = 800,
+        window: int = 64,
+        batch_size: int = 128,
+        temperature: float = 0.1,
+        behaviour_noise: float = 0.1,
+    ):
         super().__init__()
         self.inp = nn.Linear(n_features, hidden)
         self.li = LeakyIntegrator(hidden)
         self.out = nn.Linear(hidden, dim)
-        self.hparams = dict(steps=steps, window=window, batch_size=batch_size, temperature=temperature,
-                            behaviour_noise=behaviour_noise)
+        self.hparams = dict(
+            steps=steps, window=window, batch_size=batch_size, temperature=temperature, behaviour_noise=behaviour_noise
+        )
 
     @property
     def dim(self) -> int:
@@ -65,7 +76,7 @@ class ContrastiveManifold(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return F.normalize(self.out(F.gelu(self.li(F.gelu(self.inp(x))))), dim=-1)
 
-    def fit(self, x: np.ndarray, y: np.ndarray, seed: int = 0) -> "ContrastiveManifold":
+    def fit(self, x: np.ndarray, y: np.ndarray, seed: int = 0) -> ContrastiveManifold:
         """Behaviour-contrastive training on contiguous training data ``x`` (n, f), ``y`` (n, 5).
 
         For each anchor step t, the positive is the step whose finger posture is closest to
@@ -88,7 +99,7 @@ class ContrastiveManifold(nn.Module):
             positives = candidates[tree.query(target)[1]]
             ends = torch.from_numpy(np.concatenate([anchors, positives]))
             emb = self(xt[ends[:, None] + offsets])[:, -1]  # embedding at the end of each window
-            za, zp = emb[: len(anchors)], emb[len(anchors):]
+            za, zp = emb[: len(anchors)], emb[len(anchors) :]
             logits = za @ zp.T / h["temperature"]
             loss = F.cross_entropy(logits, torch.arange(len(anchors)))
             opt.zero_grad()
@@ -104,9 +115,18 @@ class ManifoldGatedDecoder(nn.Module):
     (``backbone="leaky"``, ``d_latent`` units) or are linear read-outs of a shared LSTM (``backbone="lstm"``,
     ``d_rnn`` units)."""
 
-    def __init__(self, manifold: nn.Module, n_features: int, n_outputs: int = 5, n_experts: int = 6,
-                 d_gate: int = 32, d_latent: int = 64, dropout: float = 0.2, backbone: str = "leaky",
-                 d_rnn: int = 128):
+    def __init__(
+        self,
+        manifold: nn.Module,
+        n_features: int,
+        n_outputs: int = 5,
+        n_experts: int = 6,
+        d_gate: int = 32,
+        d_latent: int = 64,
+        dropout: float = 0.2,
+        backbone: str = "leaky",
+        d_rnn: int = 128,
+    ):
         super().__init__()
         self.manifold = manifold
         for p in self.manifold.parameters():
@@ -148,8 +168,15 @@ class ManifoldGatedDecoder(nn.Module):
             p.requires_grad_(False)
 
 
-def build_manifold_gated(kind: str, x_fit: np.ndarray, y_fit: np.ndarray, dim: int = 8, seed: int = 0,
-                         backbone: str = "leaky", **decoder_kwargs) -> ManifoldGatedDecoder:
+def build_manifold_gated(
+    kind: str,
+    x_fit: np.ndarray,
+    y_fit: np.ndarray,
+    dim: int = 8,
+    seed: int = 0,
+    backbone: str = "leaky",
+    **decoder_kwargs,
+) -> ManifoldGatedDecoder:
     """Fit the manifold on the training rows only, then wrap it in a gated decoder
     (``decoder_kwargs`` go to ``ManifoldGatedDecoder``, e.g. ``d_rnn`` and ``dropout``)."""
     if kind == "pca":

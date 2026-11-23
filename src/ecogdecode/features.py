@@ -9,6 +9,7 @@ mean -> log. The local motor potential (LMP, trailing mean of the re-referenced 
 added as an extra feature. LMP plus band power follows earlier finger-decoding work on these
 recordings (Kubanek et al., 2009; Liang and Bougrain, 2012).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -43,8 +44,11 @@ def rereference(x: np.ndarray, method: str = "median") -> np.ndarray:
 
 
 def notch_filters(cfg: FeatureConfig) -> list[tuple[np.ndarray, np.ndarray]]:
-    return [signal.iirnotch(cfg.line_freq * k, Q=30.0, fs=cfg.fs) for k in cfg.notch_harmonics
-            if cfg.line_freq * k < cfg.fs / 2]
+    return [
+        signal.iirnotch(cfg.line_freq * k, Q=30.0, fs=cfg.fs)
+        for k in cfg.notch_harmonics
+        if cfg.line_freq * k < cfg.fs / 2
+    ]
 
 
 def band_filters(cfg: FeatureConfig) -> list[np.ndarray]:
@@ -75,7 +79,7 @@ def extract_features(ecog: np.ndarray, cfg: FeatureConfig = DEFAULT_FEATURES) ->
 class Standardiser:
     """Z-scoring with statistics from the fitting data only."""
 
-    def fit(self, x: np.ndarray) -> "Standardiser":
+    def fit(self, x: np.ndarray) -> Standardiser:
         self.mean_ = x.mean(axis=0)
         self.std_ = x.std(axis=0) + 1e-8
         return self

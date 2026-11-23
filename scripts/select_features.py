@@ -6,6 +6,7 @@ selection cannot leak test information. The lagged-ridge decoder is used as a fa
 Usage:
     python scripts/select_features.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -14,8 +15,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.config import FeatureConfig
+from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.evaluation import score
 from ecogdecode.models import select_ridge
 from ecogdecode.pipeline import prepare, standardise
@@ -36,13 +37,15 @@ def main() -> None:
         for window in args.windows:
             prep = prepare(data, FeatureConfig(window_ms=window))
             sc = standardise(prep, prep.fit_rows)
-            best, grid, _ = select_ridge(sc.x, sc.y, prep.fit_rows, prep.val_rows, tuple(args.lags),
-                                      np.logspace(1, 6, 11), score)
+            best, grid, _ = select_ridge(
+                sc.x, sc.y, prep.fit_rows, prep.val_rows, tuple(args.lags), np.logspace(1, 6, 11), score
+            )
             for lag in args.lags:
                 best_for_lag = max(g["val_score"] for g in grid if g["n_lags"] == lag)
                 table.setdefault(f"{window}ms_{lag}lags", {})[subject] = best_for_lag
-            print(f"subject {subject}, window {window} ms: best val r = {best['val_score']:.3f} "
-                  f"({best['n_lags']} lags)")
+            print(
+                f"subject {subject}, window {window} ms: best val r = {best['val_score']:.3f} ({best['n_lags']} lags)"
+            )
 
     summary = {k: {"per_subject": v, "mean_val_r": float(np.mean(list(v.values())))} for k, v in table.items()}
     best = max(summary, key=lambda k: summary[k]["mean_val_r"])

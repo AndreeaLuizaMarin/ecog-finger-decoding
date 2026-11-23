@@ -8,6 +8,7 @@ without a seam.
 Display scaling (``display_flexion``) is for drawing only; every score is computed on the raw glove and the raw
 decoder output.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,8 +37,16 @@ LIVE, LIVE_EDGE, LIVE_HI, LIVE_TRACE = DEC, DEC_EDGE, DEC_HI, DEC_TRACE
 OFF, OFF_EDGE, OFF_HI, OFF_TRACE = "#e39a35", "#6e420a", "#f9ddb3", "#f0ad55"
 
 _FONT = "Inter" if any(f.name == "Inter" for f in font_manager.fontManager.ttflist) else "DejaVu Sans"
-plt.rcParams.update({"font.family": _FONT, "text.color": TEXT, "axes.labelcolor": MUTED,
-                     "xtick.color": MUTED, "ytick.color": MUTED, "axes.edgecolor": GRID})
+plt.rcParams.update(
+    {
+        "font.family": _FONT,
+        "text.color": TEXT,
+        "axes.labelcolor": MUTED,
+        "xtick.color": MUTED,
+        "ytick.color": MUTED,
+        "axes.edgecolor": GRID,
+    }
+)
 # hand axes keep their y-limits and let matplotlib widen x for an equal aspect; that is intended, so no log message
 logging.getLogger("matplotlib.axes._base").setLevel(logging.ERROR)
 
@@ -53,8 +62,9 @@ def rest_baseline(x: np.ndarray, window_s: float, causal: bool, q: float = 10.0)
     return out
 
 
-def display_flexion(recorded: np.ndarray, decoded: tuple[np.ndarray, ...] = (), rec_window_s: float = 8.0,
-                    dec_window_s: float = 20.0) -> list[np.ndarray]:
+def display_flexion(
+    recorded: np.ndarray, decoded: tuple[np.ndarray, ...] = (), rec_window_s: float = 8.0, dec_window_s: float = 20.0
+) -> list[np.ndarray]:
     """Flexion in display units per finger: 0 = rest, 1 = a full recorded flexion (99th percentile).
 
     The glove's resting reading wanders slowly (in patient 3 the middle finger's rest level moves by about half its
@@ -89,8 +99,12 @@ def _unit(v) -> np.ndarray:
 X_AXIS, Z_AXIS = np.array([1.0, 0, 0]), np.array([0, 0, 1.0])
 FINGER_MCP = {1: (-0.675, 0.97), 2: (-0.225, 1.03), 3: (0.225, 0.98), 4: (0.64, 0.84)}
 FINGER_LEN = {1: (0.80, 0.48, 0.30), 2: (0.88, 0.55, 0.33), 3: (0.83, 0.52, 0.32), 4: (0.64, 0.38, 0.26)}
-FINGER_RAD = {1: (0.222, 0.2, 0.181, 0.158), 2: (0.232, 0.208, 0.188, 0.163), 3: (0.22, 0.198, 0.179, 0.155),
-              4: (0.19, 0.171, 0.155, 0.136)}  # at MCP, PIP, DIP, tip
+FINGER_RAD = {
+    1: (0.222, 0.2, 0.181, 0.158),
+    2: (0.232, 0.208, 0.188, 0.163),
+    3: (0.22, 0.198, 0.179, 0.155),
+    4: (0.19, 0.171, 0.155, 0.136),
+}  # at MCP, PIP, DIP, tip
 FINGER_SPLAY = {1: -6.0, 2: -1.0, 3: 4.0, 4: 10.0}  # degrees, relaxed with flexion
 JOINT_MAX = (80.0, 100.0, 65.0)  # MCP, PIP, DIP at full flexion, degrees
 THUMB_CMC = np.array([-0.44, -0.82, 0.06])
@@ -132,8 +146,9 @@ def project(p: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return c[..., :2] * scale[..., None], c[..., 2], scale
 
 
-_CIRCLE = np.c_[np.cos(np.linspace(0, 2 * np.pi, 28, endpoint=False)),
-                np.sin(np.linspace(0, 2 * np.pi, 28, endpoint=False))]
+_CIRCLE = np.c_[
+    np.cos(np.linspace(0, 2 * np.pi, 28, endpoint=False)), np.sin(np.linspace(0, 2 * np.pi, 28, endpoint=False))
+]
 
 
 def capsule(pa: np.ndarray, pb: np.ndarray, ra: float, rb: float) -> SPolygon:
@@ -158,24 +173,43 @@ def _flat(xy: np.ndarray) -> np.ndarray:
 
 
 # static parts, already projected: palm, forearm, palm creases
-PALM = SPolygon(_flat(_smooth_closed([
-    (0.0, -1.34), (0.6, -1.22), (0.9, -0.72), (0.99, -0.05), (0.92, 0.62), (0.7, 0.93), (0.25, 1.05),
-    (-0.22, 1.1), (-0.66, 1.02), (-0.9, 0.78), (-0.98, 0.25), (-0.93, -0.45), (-0.7, -1.12)])))
+PALM = SPolygon(
+    _flat(
+        _smooth_closed(
+            [
+                (0.0, -1.34),
+                (0.6, -1.22),
+                (0.9, -0.72),
+                (0.99, -0.05),
+                (0.92, 0.62),
+                (0.7, 0.93),
+                (0.25, 1.05),
+                (-0.22, 1.1),
+                (-0.66, 1.02),
+                (-0.9, 0.78),
+                (-0.98, 0.25),
+                (-0.93, -0.45),
+                (-0.7, -1.12),
+            ]
+        )
+    )
+)
 FOREARM = SPolygon(_flat(np.array([(-0.7, -1.12), (-0.8, -3.6), (0.84, -3.6), (0.66, -1.15), (0.0, -1.0)])))
-PALM_LINES = [_flat(_smooth_open(c)) for c in (
-    [(0.93, 0.42), (0.55, 0.5), (0.15, 0.6), (-0.32, 0.76)],             # distal transverse crease
-    [(-0.9, 0.5), (-0.45, 0.36), (0.05, 0.2), (0.55, 0.02)],             # proximal transverse crease
-    [(-0.88, 0.47), (-0.52, 0.16), (-0.33, -0.3), (-0.26, -0.78), (-0.14, -1.12)],  # thenar crease
-    [(-0.42, -1.27), (0.0, -1.31), (0.44, -1.22)])]                      # wrist crease
+PALM_LINES = [
+    _flat(_smooth_open(c))
+    for c in (
+        [(0.93, 0.42), (0.55, 0.5), (0.15, 0.6), (-0.32, 0.76)],  # distal transverse crease
+        [(-0.9, 0.5), (-0.45, 0.36), (0.05, 0.2), (0.55, 0.02)],  # proximal transverse crease
+        [(-0.88, 0.47), (-0.52, 0.16), (-0.33, -0.3), (-0.26, -0.78), (-0.14, -1.12)],  # thenar crease
+        [(-0.42, -1.27), (0.0, -1.31), (0.44, -1.22)],
+    )
+]  # wrist crease
 
 
 def tone(fill: str, edge: str, hi: str, b: float) -> tuple:
     """Shade from dark (b = 0) through the fill colour (b = 0.65) to the highlight colour (b = 1)."""
     f, e, h = (np.array(to_rgb(c)) for c in (fill, edge, hi))
-    if b < 0.65:
-        c = e + (f - e) * (0.35 + 0.65 * b / 0.65)
-    else:
-        c = f + (h - f) * 0.55 * (b - 0.65) / 0.35
+    c = e + (f - e) * (0.35 + 0.65 * b / 0.65) if b < 0.65 else f + (h - f) * 0.55 * (b - 0.65) / 0.35
     return tuple(np.clip(c, 0, 1))
 
 
@@ -187,7 +221,10 @@ def brightness(normal_hand: np.ndarray) -> tuple[float, float]:
     n = CAMERA @ normal_hand
     facing = float(n[2])
     n_vis = n if facing >= 0 else -n
-    lit = lambda c: 0.4 + 0.6 * max(0.0, c)  # ambient + diffuse
+
+    def lit(c):
+        return 0.4 + 0.6 * max(0.0, c)  # ambient + diffuse
+
     return float(np.clip(0.65 * lit(n_vis @ LIGHT) / lit(_PALM_LIGHT), 0.0, 1.0)), facing
 
 
@@ -197,10 +234,22 @@ def fade_bottom(ax, y_solid: float, y_clear: float, color: str = BG) -> None:
     rgba[..., :3] = to_rgb(color)
     rgba[:, 0, 3] = np.linspace(1, 0, 64)
     x0, x1 = ax.get_xlim()
-    ax.imshow(rgba, extent=(x0 - 10, x1 + 10, y_solid, y_clear), origin="lower", aspect="auto", zorder=50,
-              interpolation="bilinear")
-    ax.add_patch(Polygon([(x0 - 10, y_solid - 10), (x1 + 10, y_solid - 10), (x1 + 10, y_solid), (x0 - 10, y_solid)],
-                         fc=color, ec="none", zorder=50))
+    ax.imshow(
+        rgba,
+        extent=(x0 - 10, x1 + 10, y_solid, y_clear),
+        origin="lower",
+        aspect="auto",
+        zorder=50,
+        interpolation="bilinear",
+    )
+    ax.add_patch(
+        Polygon(
+            [(x0 - 10, y_solid - 10), (x1 + 10, y_solid - 10), (x1 + 10, y_solid), (x0 - 10, y_solid)],
+            fc=color,
+            ec="none",
+            zorder=50,
+        )
+    )
 
 
 def _lines_xy(geom) -> np.ndarray:
@@ -218,7 +267,9 @@ def _lines_xy(geom) -> np.ndarray:
 
 
 def _poly_path(geom) -> Path:
-    polys = [geom] if geom.geom_type == "Polygon" else [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"]
+    polys = (
+        [geom] if geom.geom_type == "Polygon" else [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"]
+    )
     verts, codes = [], []
     for p in polys:
         xy = np.asarray(p.exterior.coords)
@@ -240,11 +291,22 @@ class HandGeometry:
         for c_i, ch in enumerate(self.chains):
             s = 1 if c_i == 0 else 0  # the thumb's first segment is the thenar mass, part of the palm
             xy, z, sc = project(ch["pts"])
-            segs = [(xy[i], xy[i + 1], ch["rad"][i] * sc[i], ch["rad"][i + 1] * sc[i + 1], (z[i] + z[i + 1]) / 2,
-                     ch["normals"][i]) for i in range(s, 3)]
+            segs = [
+                (
+                    xy[i],
+                    xy[i + 1],
+                    ch["rad"][i] * sc[i],
+                    ch["rad"][i + 1] * sc[i + 1],
+                    (z[i] + z[i + 1]) / 2,
+                    ch["normals"][i],
+                )
+                for i in range(s, 3)
+            ]
             union = unary_union([capsule(a, b, ra, rb) for a, b, ra, rb, _, _ in segs])
             knuckle = Point(xy[s]).buffer(1.08 * ch["rad"][s] * sc[s], 24).intersection(self.palm)
-            outline = union.exterior.difference(knuckle.buffer(0.005)) if union.geom_type == "Polygon" else union.boundary
+            outline = (
+                union.exterior.difference(knuckle.buffer(0.005)) if union.geom_type == "Polygon" else union.boundary
+            )
             depth = float(np.mean(z[s:])) + (0.6 * flex[0] if c_i == 0 else 0.0)  # a flexed thumb lies over the fingers
             self.digits.append({"segs": segs, "union": union, "outline": outline, "depth": depth})
 
@@ -257,30 +319,46 @@ class HandArtist:
 
     def __init__(self, ax, fill, edge, hi, ghost=False, shadow=True):
         self.ax, self.fill, self.edge, self.hi = ax, fill, edge, hi
-        self.shadow = ax.add_patch(PathPatch(Path([[0, 0]]), fc="black", ec="none", alpha=0.35, zorder=1)) \
-            if shadow else None
-        self.palm = ax.add_patch(PathPatch(Path([[0, 0]]), fc=tone(fill, edge, hi, 0.65), ec=edge, lw=1.4,
-                                           zorder=2, joinstyle="round"))
-        self.palm_hi = ax.add_patch(Polygon(_flat(_smooth_closed([(-0.35, 0.55), (0.45, 0.7), (0.75, 0.0),
-                                                                  (0.45, -0.7), (-0.2, -0.55)])),
-                                            fc=tone(fill, edge, hi, 0.85), ec="none", alpha=0.35, zorder=2.1))
+        self.shadow = (
+            ax.add_patch(PathPatch(Path([[0, 0]]), fc="black", ec="none", alpha=0.35, zorder=1)) if shadow else None
+        )
+        self.palm = ax.add_patch(
+            PathPatch(Path([[0, 0]]), fc=tone(fill, edge, hi, 0.65), ec=edge, lw=1.4, zorder=2, joinstyle="round")
+        )
+        self.palm_hi = ax.add_patch(
+            Polygon(
+                _flat(_smooth_closed([(-0.35, 0.55), (0.45, 0.7), (0.75, 0.0), (0.45, -0.7), (-0.2, -0.55)])),
+                fc=tone(fill, edge, hi, 0.85),
+                ec="none",
+                alpha=0.35,
+                zorder=2.1,
+            )
+        )
         self.palm_hi.set_clip_path(self.palm)
         for xy in PALM_LINES:
-            ln = ax.add_line(Line2D(xy[:, 0], xy[:, 1], color=edge, lw=1.0, alpha=0.45, zorder=2.2,
-                                    solid_capstyle="round"))
+            ln = ax.add_line(
+                Line2D(xy[:, 0], xy[:, 1], color=edge, lw=1.0, alpha=0.45, zorder=2.2, solid_capstyle="round")
+            )
             ln.set_clip_path(self.palm)
         self.groups = []
         for _ in range(5):
-            g = {"segs": [ax.add_patch(Polygon(np.zeros((3, 2)), ec="none", zorder=3)) for _ in range(3)],
-                 "hi": [ax.add_line(Line2D([], [], color=hi, solid_capstyle="round", zorder=3)) for _ in range(3)],
-                 "crease": ax.add_line(Line2D([], [], color=edge, lw=0.9, solid_capstyle="round", zorder=3)),
-                 "nail": ax.add_patch(Polygon(np.zeros((3, 2)), fc=tone(fill, edge, hi, 0.92), ec=edge, lw=0.7,
-                                              zorder=3)),
-                 "outline": ax.add_line(Line2D([], [], color=edge, lw=1.4, solid_capstyle="round",
-                                               solid_joinstyle="round", zorder=3))}
+            g = {
+                "segs": [ax.add_patch(Polygon(np.zeros((3, 2)), ec="none", zorder=3)) for _ in range(3)],
+                "hi": [ax.add_line(Line2D([], [], color=hi, solid_capstyle="round", zorder=3)) for _ in range(3)],
+                "crease": ax.add_line(Line2D([], [], color=edge, lw=0.9, solid_capstyle="round", zorder=3)),
+                "nail": ax.add_patch(
+                    Polygon(np.zeros((3, 2)), fc=tone(fill, edge, hi, 0.92), ec=edge, lw=0.7, zorder=3)
+                ),
+                "outline": ax.add_line(
+                    Line2D([], [], color=edge, lw=1.4, solid_capstyle="round", solid_joinstyle="round", zorder=3)
+                ),
+            }
             self.groups.append(g)
-        self.ghost = ax.add_line(Line2D([], [], color="white", lw=1.3, alpha=0.7, zorder=40,
-                                        solid_joinstyle="round")) if ghost else None
+        self.ghost = (
+            ax.add_line(Line2D([], [], color="white", lw=1.3, alpha=0.7, zorder=40, solid_joinstyle="round"))
+            if ghost
+            else None
+        )
         self.pt_per_unit = None
 
     def _ppu(self) -> float:
@@ -323,8 +401,10 @@ class HandArtist:
                 perp = -perp  # towards the light
             r = (ra + rb) / 2
             off = 0.38 * r * perp
-            hi.set_data([a[0] + off[0] + 0.15 * (b - a)[0], b[0] + off[0] - 0.12 * (b - a)[0]],
-                        [a[1] + off[1] + 0.15 * (b - a)[1], b[1] + off[1] - 0.12 * (b - a)[1]])
+            hi.set_data(
+                [a[0] + off[0] + 0.15 * (b - a)[0], b[0] + off[0] - 0.12 * (b - a)[0]],
+                [a[1] + off[1] + 0.15 * (b - a)[1], b[1] + off[1] - 0.12 * (b - a)[1]],
+            )
             hi.set_linewidth(max(0.5, 0.55 * r * ppu))
             hi.set_alpha(0.12 + 0.3 * b_light)
             hi.set_zorder(z + 0.04)
@@ -391,8 +471,16 @@ def trace_panel(fig, rect, series: list[tuple[str, float]], legend: list, win_st
         off = (4 - k) * 1.3
         ax.axhline(off, color=GRID, lw=0.6, zorder=0)
         label = FINGERS[k] if k in SCORED else f"{FINGERS[k]}\n(not scored)"
-        ax.text(tt[0] - 0.12, off + 0.45, label, ha="right", va="center", fontsize=9.5 if k in SCORED else 8,
-                color=TEXT if k in SCORED else MUTED, linespacing=1.0)
+        ax.text(
+            tt[0] - 0.12,
+            off + 0.45,
+            label,
+            ha="right",
+            va="center",
+            fontsize=9.5 if k in SCORED else 8,
+            color=TEXT if k in SCORED else MUTED,
+            linespacing=1.0,
+        )
     for color, lw in series:
         lines.append([ax.plot([], [], color=color, lw=lw, solid_joinstyle="round")[0] for _ in range(5)])
     ax.axvline(0, color=TEXT, lw=1, alpha=0.6)
@@ -403,8 +491,17 @@ def trace_panel(fig, rect, series: list[tuple[str, float]], legend: list, win_st
     ax.set_xlabel("seconds before now", fontsize=9)
     for sp in ax.spines.values():
         sp.set_visible(False)
-    ax.legend(handles=legend, loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=len(legend), frameon=False,
-              fontsize=9, labelcolor=TEXT, handlelength=1.6, columnspacing=1.4)
+    ax.legend(
+        handles=legend,
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.0),
+        ncol=len(legend),
+        frameon=False,
+        fontsize=9,
+        labelcolor=TEXT,
+        handlelength=1.6,
+        columnspacing=1.4,
+    )
     return ax, tt, lines
 
 
@@ -412,7 +509,7 @@ def set_traces(lines, tt, data: list[np.ndarray], t: int) -> None:
     lo = t - len(tt) + 1
     for series, x in zip(lines, data):
         seg = np.full((len(tt), 5), np.nan)
-        avail = x[max(lo, 0): t + 1]
-        seg[len(tt) - len(avail):] = avail
+        avail = x[max(lo, 0) : t + 1]
+        seg[len(tt) - len(avail) :] = avail
         for k in range(5):
             series[k].set_data(tt, np.clip(seg[:, k], -0.25, 1.3) + (4 - k) * 1.3)

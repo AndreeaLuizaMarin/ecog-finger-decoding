@@ -1,4 +1,5 @@
 """Scoring exactly as in the competition: Pearson r per finger at 1 kHz, ring finger excluded."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -55,8 +56,9 @@ def causal_ema(x: np.ndarray, tau_ms: float, step_ms: float = 40.0) -> np.ndarra
     return out
 
 
-def choose_smoothing(val_pred: np.ndarray, val_true: np.ndarray, grid: tuple[float, ...],
-                     context: int = 0) -> tuple[float, float]:
+def choose_smoothing(
+    val_pred: np.ndarray, val_true: np.ndarray, grid: tuple[float, ...], context: int = 0
+) -> tuple[float, float]:
     """Pick the smoothing time constant with the best validation score.
 
     ``val_pred`` may start with ``context`` warm-up steps that are smoothed but not scored.

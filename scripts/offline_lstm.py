@@ -15,6 +15,7 @@ decoder.
 Usage:
     python scripts/offline_lstm.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,14 +79,22 @@ def run(data, seed: int) -> dict:
     prep = keep_electrodes(full, top_electrodes(full, full.train_rows, k))
     sc = standardise(prep, prep.train_rows)
     model = initial
-    train_sequence_model(model, sc.x, sc.y, prep.train_rows, None, score, cfg, epochs=best["epoch"] + 1,
-                         n_per_channel=npc)
+    train_sequence_model(
+        model, sc.x, sc.y, prep.train_rows, None, score, cfg, epochs=best["epoch"] + 1, n_per_channel=npc
+    )
     pred = sc.y_scaler.inverse_transform(smooth(predict_sequence(model, sc.x), sigma))
     t = prep.ends[prep.test_rows] - prep.n_train_samples
     pred_1khz = upsample_linear(pred[prep.test_rows], t, len(data.test_flex))
     total, per = score_1khz(pred_1khz, data.test_flex)
-    return {"seed": seed, "epochs": best["epoch"] + 1, "sigma_ms": sigma, "val_score": val_by_sigma[sigma],
-            "score": total, "r": per, "pred_25hz": pred_1khz[::40].astype(np.float32)}
+    return {
+        "seed": seed,
+        "epochs": best["epoch"] + 1,
+        "sigma_ms": sigma,
+        "val_score": val_by_sigma[sigma],
+        "score": total,
+        "r": per,
+        "pred_25hz": pred_1khz[::40].astype(np.float32),
+    }
 
 
 def main() -> None:
@@ -107,12 +116,19 @@ def main() -> None:
                 np.save(OUT / "preds" / f"lstm_selected_offline_sub{s}.npy", res["pred_25hz"])
             res.pop("pred_25hz")
             runs.append(res)
-            print(f"S{s} seed {seed}: offline 5b {res['score']:.3f} (sigma {res['sigma_ms']:.0f} ms, "
-                  f"{res['epochs']} epochs)", flush=True)
-        report["subjects"][str(s)] = {"score": float(np.mean([r["score"] for r in runs])),
-                                      "sd": float(np.std([r["score"] for r in runs])), "runs": runs}
-    seed_means = [np.mean([report["subjects"][str(s)]["runs"][i]["score"] for s in SUBJECTS])
-                  for i in range(len(args.seeds))]
+            print(
+                f"S{s} seed {seed}: offline 5b {res['score']:.3f} (sigma {res['sigma_ms']:.0f} ms, "
+                f"{res['epochs']} epochs)",
+                flush=True,
+            )
+        report["subjects"][str(s)] = {
+            "score": float(np.mean([r["score"] for r in runs])),
+            "sd": float(np.std([r["score"] for r in runs])),
+            "runs": runs,
+        }
+    seed_means = [
+        np.mean([report["subjects"][str(s)]["runs"][i]["score"] for s in SUBJECTS]) for i in range(len(args.seeds))
+    ]
     report["score"] = float(np.mean(seed_means))
     report["sd"] = float(np.std(seed_means))
     (OUT / "lstm_offline.json").write_text(json.dumps(report, indent=2))

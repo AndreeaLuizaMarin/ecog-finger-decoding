@@ -1,4 +1,5 @@
 """A synthetic recording in which high-gamma amplitude on some channels tracks finger flexion (tests, quickstart)."""
+
 from __future__ import annotations
 
 import numpy as np

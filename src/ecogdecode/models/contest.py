@@ -5,6 +5,7 @@ samples after the predicted moment. The versions here keep each method's structu
 replace every non-causal step with its causal counterpart; the deviations are listed in the
 class docstrings.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -42,7 +43,7 @@ class LiangBougrainDecoder:
     def _solve(a: np.ndarray, y: np.ndarray) -> np.ndarray:
         return np.linalg.lstsq(a.astype(np.float64), y.astype(np.float64), rcond=None)[0]  # pseudo-inverse
 
-    def select(self, am: np.ndarray, y: np.ndarray, rows: slice) -> "LiangBougrainDecoder":
+    def select(self, am: np.ndarray, y: np.ndarray, rows: slice) -> LiangBougrainDecoder:
         """Greedy forward selection, per finger, inside ``rows`` (chronological 3/5 - 2/5 split).
 
         Every candidate model is a least-squares fit; the Gram matrix of all lagged features is
@@ -51,7 +52,10 @@ class LiangBougrainDecoder:
         n, n_pairs, k = rows.stop - rows.start, am.shape[1], self.n_lags
         cut = int(self.selection_split * n)
         lagged = lag_matrix(am, k).astype(np.float64)[rows]  # (n, lag * pairs), lag-major
-        cols_of = lambda p: [lag * n_pairs + p for lag in range(k)]
+
+        def cols_of(p):
+            return [lag * n_pairs + p for lag in range(k)]
+
         design = np.hstack([lagged, np.ones((n, 1))])
         intercept = design.shape[1] - 1
         fit, val = design[:cut], design[cut:]
@@ -78,7 +82,7 @@ class LiangBougrainDecoder:
             self.pairs_.append(chosen)
         return self
 
-    def fit(self, am: np.ndarray, y: np.ndarray, rows: slice) -> "LiangBougrainDecoder":
+    def fit(self, am: np.ndarray, y: np.ndarray, rows: slice) -> LiangBougrainDecoder:
         self.coef_ = [self._solve(self._design(am, pairs)[rows], y[rows, k]) for k, pairs in enumerate(self.pairs_)]
         return self
 
@@ -122,8 +126,9 @@ class SwitchingLinearDecoder:
     selection by group norm (paper: a mixed-norm simultaneous sparse approximation).
     """
 
-    def __init__(self, n_per_channel: int, n_keep: int | None = None, C: float = 0.01, alpha: float = 10.0,
-                 shift: int = 5):
+    def __init__(
+        self, n_per_channel: int, n_keep: int | None = None, C: float = 0.01, alpha: float = 10.0, shift: int = 5
+    ):
         self.n_per_channel, self.n_keep, self.C, self.alpha, self.shift = n_per_channel, n_keep, C, alpha, shift
 
     def _classifier(self) -> LogisticRegression:
@@ -141,10 +146,17 @@ class SwitchingLinearDecoder:
         clf = self._classifier().fit(self._state_inputs(x)[rows], states[rows])
         n_channels = x.shape[1] // self.n_per_channel
         w = clf.coef_.reshape(len(clf.classes_), 2, n_channels, self.n_per_channel)
-        return np.argsort(-np.sqrt((w ** 2).sum(axis=(0, 1, 3))))
+        return np.argsort(-np.sqrt((w**2).sum(axis=(0, 1, 3))))
 
-    def fit(self, x: np.ndarray, lmp: np.ndarray, y: np.ndarray, states: np.ndarray, rows: slice,
-            ranking: np.ndarray | None = None) -> "SwitchingLinearDecoder":
+    def fit(
+        self,
+        x: np.ndarray,
+        lmp: np.ndarray,
+        y: np.ndarray,
+        states: np.ndarray,
+        rows: slice,
+        ranking: np.ndarray | None = None,
+    ) -> SwitchingLinearDecoder:
         self.cols_ = None
         if self.n_keep is not None and ranking is not None:
             keep = np.sort(ranking[: self.n_keep])
@@ -156,7 +168,9 @@ class SwitchingLinearDecoder:
         for s in np.unique(states[rows]):
             idx = np.arange(rows.start, rows.stop)[states[rows] == s]
             a = a_all[idx]
-            self.models_[s] = np.linalg.solve(a.T @ a + self.alpha * np.eye(a.shape[1]), a.T @ y[idx].astype(np.float64))
+            self.models_[s] = np.linalg.solve(
+                a.T @ a + self.alpha * np.eye(a.shape[1]), a.T @ y[idx].astype(np.float64)
+            )
         return self
 
     def predict(self, x: np.ndarray, lmp: np.ndarray) -> np.ndarray:
@@ -168,9 +182,17 @@ class SwitchingLinearDecoder:
         return out
 
 
-def select_switching(x: np.ndarray, lmp: np.ndarray, y: np.ndarray, fit_rows: slice, val_rows: slice,
-                     n_per_channel: int, keep_grid=(16, 32, None), c_grid=(0.001, 0.003, 0.01),
-                     alpha_grid=(1.0, 10.0, 100.0)) -> tuple[dict, list[dict], np.ndarray]:
+def select_switching(
+    x: np.ndarray,
+    lmp: np.ndarray,
+    y: np.ndarray,
+    fit_rows: slice,
+    val_rows: slice,
+    n_per_channel: int,
+    keep_grid=(16, 32, None),
+    c_grid=(0.001, 0.003, 0.01),
+    alpha_grid=(1.0, 10.0, 100.0),
+) -> tuple[dict, list[dict], np.ndarray]:
     """Choose electrode count, classifier strength and ridge penalty on the validation block."""
     states = finger_states(y, fit_rows)
     grid = []

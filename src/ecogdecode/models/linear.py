@@ -1,4 +1,5 @@
 """Wiener filter: ridge regression on the current and recent feature vectors."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -9,7 +10,7 @@ def lag_matrix(x: np.ndarray, n_lags: int) -> np.ndarray:
     n, f = x.shape
     out = np.zeros((n, f * n_lags), dtype=x.dtype)
     for lag in range(n_lags):
-        out[lag:, lag * f:(lag + 1) * f] = x[: n - lag]
+        out[lag:, lag * f : (lag + 1) * f] = x[: n - lag]
     return out
 
 
@@ -27,7 +28,7 @@ class LaggedRidge:
     def _design(self, x_seq: np.ndarray) -> np.ndarray:
         return lag_matrix(x_seq, self.n_lags)
 
-    def fit(self, x_seq: np.ndarray, y_seq: np.ndarray, rows: slice) -> "LaggedRidge":
+    def fit(self, x_seq: np.ndarray, y_seq: np.ndarray, rows: slice) -> LaggedRidge:
         a = self._design(x_seq.astype(np.float32))[rows]
         y = y_seq[rows].astype(np.float64)
         self.x_mean_, self.y_mean_ = a.mean(axis=0, dtype=np.float64), y.mean(axis=0)
@@ -41,8 +42,15 @@ class LaggedRidge:
         return (self._design(x_seq) - self.x_mean_) @ self.coef_ + self.y_mean_
 
 
-def select_ridge(x_seq: np.ndarray, y_seq: np.ndarray, fit_rows: slice, val_rows: slice,
-                 lag_grid: tuple[int, ...], alpha_grid: np.ndarray, score_fn) -> tuple[dict, list[dict]]:
+def select_ridge(
+    x_seq: np.ndarray,
+    y_seq: np.ndarray,
+    fit_rows: slice,
+    val_rows: slice,
+    lag_grid: tuple[int, ...],
+    alpha_grid: np.ndarray,
+    score_fn,
+) -> tuple[dict, list[dict]]:
     """Grid search over lags and ridge penalty on a held-out validation block.
 
     Returns the best setting, every result and the best setting's validation predictions.

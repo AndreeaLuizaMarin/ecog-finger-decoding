@@ -8,6 +8,7 @@
 * The official test labels never enter ``Prepared``: test rows of ``y`` are NaN. Scoring takes them as a
   separate argument (``evaluate``); an analysis that needs them in the array asks for ``with_test_labels``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -36,14 +37,16 @@ class Prepared:
     @property
     def test_times(self) -> np.ndarray:
         """Sample times (relative to the test start) of the last training step and every test step."""
-        return self.ends[self.test_rows.start - 1: self.test_rows.stop] - self.n_train_samples
+        return self.ends[self.test_rows.start - 1 : self.test_rows.stop] - self.n_train_samples
 
     def test_predictions(self, pred: np.ndarray) -> np.ndarray:
         """Step predictions from the last training step to the end, aligned with ``test_times``."""
-        return pred[self.test_rows.start - 1: self.test_rows.stop]
+        return pred[self.test_rows.start - 1 : self.test_rows.stop]
 
 
-def prepare(data: SubjectData, cfg: FeatureConfig = DEFAULT_FEATURES, protocol: Protocol = DEFAULT_PROTOCOL) -> Prepared:
+def prepare(
+    data: SubjectData, cfg: FeatureConfig = DEFAULT_FEATURES, protocol: Protocol = DEFAULT_PROTOCOL
+) -> Prepared:
     """Compute causal features over the continuous recording and define the chronological split."""
     x, ends = extract_features(data.ecog, cfg)
     hidden = np.full((len(data.test_ecog), 5), np.nan, dtype=np.float32)  # test labels stay out of training arrays
@@ -51,9 +54,18 @@ def prepare(data: SubjectData, cfg: FeatureConfig = DEFAULT_FEATURES, protocol: 
     n_train_steps = int(np.searchsorted(ends, data.n_train))  # steps that end inside the training segment
     n_val = int(round(protocol.val_fraction * (n_train_steps - protocol.warmup_steps)))
     split = n_train_steps - n_val
-    return Prepared(data.subject, cfg, x, y, ends, data.n_train, slice(protocol.warmup_steps, split),
-                    slice(split, n_train_steps), slice(protocol.warmup_steps, n_train_steps),
-                    slice(n_train_steps, len(ends)))
+    return Prepared(
+        data.subject,
+        cfg,
+        x,
+        y,
+        ends,
+        data.n_train,
+        slice(protocol.warmup_steps, split),
+        slice(split, n_train_steps),
+        slice(protocol.warmup_steps, n_train_steps),
+        slice(n_train_steps, len(ends)),
+    )
 
 
 @dataclass

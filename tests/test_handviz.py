@@ -1,4 +1,5 @@
 """Display helpers used by the videos: resting-level removal, the hand geometry and video rendering."""
+
 import shutil
 import subprocess
 
@@ -15,7 +16,7 @@ from ecogdecode.handviz import HandArtist, HandGeometry, display_flexion, rest_b
 def _bumps(n: int, rng: np.random.Generator) -> np.ndarray:
     x = np.zeros(n)
     for start in rng.choice(n - 60, size=n // 250, replace=False):
-        x[start: start + 50] += np.sin(np.linspace(0, np.pi, 50))
+        x[start : start + 50] += np.sin(np.linspace(0, np.pi, 50))
     return x
 
 
@@ -24,7 +25,7 @@ def test_drifting_rest_level_is_removed():
     n = 5000
     flex = np.stack([_bumps(n, rng) for _ in range(5)], 1)
     drift = np.linspace(-1, 1, n)[:, None] * np.array([0, 0, 1.0, 0, 0])  # middle finger's rest level wanders
-    rec, = display_flexion(flex + drift)
+    (rec,) = display_flexion(flex + drift)
     at_rest = flex[:, 2] == 0
     assert abs(np.median(rec[at_rest, 2])) < 0.05
     assert abs(np.median(rec[at_rest, 2][:500]) - np.median(rec[at_rest, 2][-500:])) < 0.05
@@ -73,6 +74,21 @@ def test_render_without_fork_gives_every_frame(tmp_path, monkeypatch):
 
     monkeypatch.setattr(render.mp, "get_all_start_methods", lambda: ["spawn"])
     out = render.render_mp4(build, 12, tmp_path / "clip.mp4", jobs=2)
-    frames = subprocess.run(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
-                             "stream=nb_read_frames", "-of", "csv=p=0", str(out)], capture_output=True, text=True)
+    frames = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-count_frames",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=nb_read_frames",
+            "-of",
+            "csv=p=0",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert frames.stdout.strip() == "12"

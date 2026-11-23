@@ -3,6 +3,7 @@
 Every frame is drawn from data alone (no state carried between frames), so a long video can be split into chunks
 that separate processes draw at the same time; the chunks are then joined without re-encoding.
 """
+
 from __future__ import annotations
 
 import multiprocessing as mp
@@ -20,9 +21,31 @@ def _render_chunk(build: Build, frames: np.ndarray, path: str, fps: int, crf: in
     fig, update = build()
     fig.canvas.draw()
     w, h = fig.canvas.get_width_height()
-    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{w}x{h}",
-           "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf),
-           "-pix_fmt", "yuv420p", path]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgba",
+        "-s",
+        f"{w}x{h}",
+        "-r",
+        str(fps),
+        "-i",
+        "-",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        str(crf),
+        "-pix_fmt",
+        "yuv420p",
+        path,
+    ]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for i in frames:
         update(int(i))
@@ -58,8 +81,26 @@ def render_mp4(build: Build, n_frames: int, path: Path, jobs: int = 2, fps: int 
                     raise RuntimeError("a render process failed")
         listing = Path(tmp) / "parts.txt"
         listing.write_text("".join(f"file '{Path(p).as_posix()}'\n" for p in parts))
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(listing),
-                        "-c", "copy", "-movflags", "+faststart", str(path)], check=True)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(listing),
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(path),
+            ],
+            check=True,
+        )
     return path
 
 
@@ -68,10 +109,33 @@ def gif_excerpt(mp4: Path, gif: Path, start_s: float, seconds: float, fps: int =
     palette = Path(gif).with_suffix(".palette.png")
     vf = f"fps={fps},scale={width}:-1:flags=lanczos"
     clip = ["-ss", f"{start_s}", "-t", f"{seconds}", "-i", str(mp4)]
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *clip, "-vf",
-                    f"{vf},palettegen=max_colors=128:stats_mode=diff", str(palette)], check=True)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *clip, "-i", str(palette), "-lavfi",
-                    f"{vf}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", str(gif)],
-                   check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            *clip,
+            "-vf",
+            f"{vf},palettegen=max_colors=128:stats_mode=diff",
+            str(palette),
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            *clip,
+            "-i",
+            str(palette),
+            "-lavfi",
+            f"{vf}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+            str(gif),
+        ],
+        check=True,
+    )
     palette.unlink()
     return Path(gif)

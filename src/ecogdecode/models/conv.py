@@ -1,4 +1,5 @@
 """Causal temporal convolutional network (TCN): dilated convolutions that only look back in time."""
+
 from __future__ import annotations
 
 import torch
@@ -23,8 +24,15 @@ class CausalConvBlock(nn.Module):
 class TCNDecoder(nn.Module):
     """Dilations 1, 2, 4, 8, 16 with kernel 3: a receptive field of 63 steps (2.5 s)."""
 
-    def __init__(self, n_features: int, n_outputs: int = 5, channels: int = 128, kernel: int = 3,
-                 dilations: tuple[int, ...] = (1, 2, 4, 8, 16), dropout: float = 0.2):
+    def __init__(
+        self,
+        n_features: int,
+        n_outputs: int = 5,
+        channels: int = 128,
+        kernel: int = 3,
+        dilations: tuple[int, ...] = (1, 2, 4, 8, 16),
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.inp = nn.Sequential(nn.Dropout(dropout), nn.Linear(n_features, channels), nn.GELU())
         self.blocks = nn.ModuleList(CausalConvBlock(channels, kernel, d, dropout) for d in dilations)

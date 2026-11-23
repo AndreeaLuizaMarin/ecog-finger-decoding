@@ -10,6 +10,7 @@ like the LSTM trained from scratch, so the comparison isolates the effect of pre
 
 Only the training segments are used for pretraining; the test segments are never seen.
 """
+
 from __future__ import annotations
 
 import copy
@@ -23,8 +24,9 @@ from .models.possm import POSSMDecoder
 from .models.recurrent import LSTMDecoder
 
 
-def info_nce_time(emb: torch.Tensor, gen: torch.Generator, n_anchors: int = 32, max_offset: int = 5,
-                  temperature: float = 0.1) -> torch.Tensor:
+def info_nce_time(
+    emb: torch.Tensor, gen: torch.Generator, n_anchors: int = 32, max_offset: int = 5, temperature: float = 0.1
+) -> torch.Tensor:
     """InfoNCE with temporal positives: the positive for (window b, time t) is (b, t + offset).
 
     All other positives in the batch (other windows and other times) act as negatives.
@@ -40,9 +42,16 @@ def info_nce_time(emb: torch.Tensor, gen: torch.Generator, n_anchors: int = 32, 
     return F.cross_entropy(logits, torch.arange(len(logits)))
 
 
-def pretrain_contrastive(xs: dict[int, np.ndarray], fit_rows: dict[int, slice], seed: int = 0,
-                         steps: int = 600, seq_len: int = 128, batch_size: int = 16, hidden: int = 128,
-                         lr: float = 1e-3) -> tuple[dict[int, LSTMDecoder], list[float]]:
+def pretrain_contrastive(
+    xs: dict[int, np.ndarray],
+    fit_rows: dict[int, slice],
+    seed: int = 0,
+    steps: int = 600,
+    seq_len: int = 128,
+    batch_size: int = 16,
+    hidden: int = 128,
+    lr: float = 1e-3,
+) -> tuple[dict[int, LSTMDecoder], list[float]]:
     """Pretrain one LSTM core shared by all subjects. Returns per-subject decoders (sharing the core)."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
@@ -77,9 +86,18 @@ def pretrain_contrastive(xs: dict[int, np.ndarray], fit_rows: dict[int, slice], 
     return {s: copy.deepcopy(dec) for s, dec in decoders.items()}, losses
 
 
-def pretrain_supervised(xs: dict[int, np.ndarray], ys: dict[int, np.ndarray], fit_rows: dict[int, slice],
-                        seed: int = 0, steps: int = 600, seq_len: int = 256, burn_in: int = 50,
-                        batch_size: int = 16, hidden: int = 128, lr: float = 1e-3) -> dict[int, LSTMDecoder]:
+def pretrain_supervised(
+    xs: dict[int, np.ndarray],
+    ys: dict[int, np.ndarray],
+    fit_rows: dict[int, slice],
+    seed: int = 0,
+    steps: int = 600,
+    seq_len: int = 256,
+    burn_in: int = 50,
+    batch_size: int = 16,
+    hidden: int = 128,
+    lr: float = 1e-3,
+) -> dict[int, LSTMDecoder]:
     """Multi-patient training: one LSTM core shared by all subjects, each with its own input and
     output layers, trained on every subject's labelled fit rows. Returns per-subject decoders (each
     with its own copy of the shared core) to be fine-tuned per subject."""
@@ -109,10 +127,20 @@ def pretrain_supervised(xs: dict[int, np.ndarray], ys: dict[int, np.ndarray], fi
     return {s: copy.deepcopy(dec) for s, dec in decoders.items()}
 
 
-def pretrain_possm(xs: dict[int, np.ndarray], ys: dict[int, np.ndarray], fit_rows: dict[int, slice],
-                   n_per_channel: int, seed: int = 0, steps: int = 600, seq_len: int = 256, burn_in: int = 50,
-                   batch_size: int = 16, lr: float = 1e-3, gain_jitter: float = 0.3,
-                   feature_noise: float = 0.3) -> dict[int, POSSMDecoder]:
+def pretrain_possm(
+    xs: dict[int, np.ndarray],
+    ys: dict[int, np.ndarray],
+    fit_rows: dict[int, slice],
+    n_per_channel: int,
+    seed: int = 0,
+    steps: int = 600,
+    seq_len: int = 256,
+    burn_in: int = 50,
+    batch_size: int = 16,
+    lr: float = 1e-3,
+    gain_jitter: float = 0.3,
+    feature_noise: float = 0.3,
+) -> dict[int, POSSMDecoder]:
     """Multi-patient training of the POSSM-style decoder: every weight is shared except the electrode embeddings,
     which are per patient (electrode count and placement differ). Returns per-subject decoders, each a copy of the
     shared model with that subject's embeddings, to be fine-tuned or adapted per subject."""

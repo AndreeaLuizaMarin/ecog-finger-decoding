@@ -21,6 +21,7 @@ Usage (one process per subject and seed, so runs can share the machine):
     python scripts/calibration.py --data-dir data --subject 1 --seed 0
     python scripts/calibration.py --summarise
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,8 +48,11 @@ STEPS_PER_MINUTE = 60 * 25
 def last_minutes(prep: Prepared, minutes: float | None) -> Prepared:
     """The last ``minutes`` of the training segment, split 80 / 20 into fit and validation rows."""
     end = prep.train_rows.stop
-    start = prep.train_rows.start if minutes is None else max(end - int(round(minutes * STEPS_PER_MINUTE)),
-                                                              prep.train_rows.start)
+    start = (
+        prep.train_rows.start
+        if minutes is None
+        else max(end - int(round(minutes * STEPS_PER_MINUTE)), prep.train_rows.start)
+    )
     split = end - int(round(0.2 * (end - start)))
     return replace(prep, fit_rows=slice(start, split), val_rows=slice(split, end), train_rows=slice(start, end))
 
@@ -59,8 +63,13 @@ def pretrained_on_others(preps: dict[int, Prepared], target: int, seed: int) -> 
     others = {s: p for s, p in preps.items() if s != target}
     scaled = {s: standardise(p, p.train_rows) for s, p in others.items()}
     npc = preps[target].cfg.n_per_channel
-    decoders = pretrain_possm({s: v.x for s, v in scaled.items()}, {s: v.y for s, v in scaled.items()},
-                              {s: p.train_rows for s, p in others.items()}, npc, seed=seed)
+    decoders = pretrain_possm(
+        {s: v.x for s, v in scaled.items()},
+        {s: v.y for s, v in scaled.items()},
+        {s: p.train_rows for s, p in others.items()},
+        npc,
+        seed=seed,
+    )
     return copy.deepcopy(next(iter(decoders.values()))).new_patient(preps[target].x.shape[1])
 
 
@@ -93,14 +102,27 @@ def run(data_dir: str, subject: int, seed: int, threads: int) -> None:
         results["possm_loo_id"] = run_network(sub, "possm", seed, DEFAULT_PROTOCOL, model=frozen)
         for key, res in results.items():
             test = evaluate(prep, res.pred, data.test_flex)
-            rows.append({"approach": key, "minutes": label, "train_steps": sub.train_rows.stop - sub.train_rows.start,
-                         "subject": subject, "seed": seed, "val_score": res.val_score, "score": test["score"],
-                         "r": test["r"], "epochs": res.selected.get("epochs")})
-            print(f"S{subject} seed {seed} {label!s:>4} min  {key:<14} val {res.val_score:.3f}  test {test['score']:.3f}",
-                  flush=True)
+            rows.append(
+                {
+                    "approach": key,
+                    "minutes": label,
+                    "train_steps": sub.train_rows.stop - sub.train_rows.start,
+                    "subject": subject,
+                    "seed": seed,
+                    "val_score": res.val_score,
+                    "score": test["score"],
+                    "r": test["r"],
+                    "epochs": res.selected.get("epochs"),
+                }
+            )
+            print(
+                f"S{subject} seed {seed} {label!s:>4} min  {key:<14} val {res.val_score:.3f}  test {test['score']:.3f}",
+                flush=True,
+            )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / f"s{subject}_seed{seed}.json").write_text(json.dumps({"environment": environment(threads), "rows": rows},
-                                                               indent=2))
+    (OUT / f"s{subject}_seed{seed}.json").write_text(
+        json.dumps({"environment": environment(threads), "rows": rows}, indent=2)
+    )
 
 
 def summarise() -> dict:
@@ -115,12 +137,21 @@ def summarise() -> dict:
             if not sel:
                 continue
             subjects = sorted({r["subject"] for r in sel})
-            seeds = sorted({r["seed"] for r in sel if all(any(q["subject"] == s and q["seed"] == r["seed"]
-                                                               for q in sel) for s in subjects)})
+            seeds = sorted(
+                {
+                    r["seed"]
+                    for r in sel
+                    if all(any(q["subject"] == s and q["seed"] == r["seed"] for q in sel) for s in subjects)
+                }
+            )
             per_seed = [np.mean([r["score"] for r in sel if r["seed"] == seed]) for seed in seeds]
             per_subject = {str(s): float(np.mean([r["score"] for r in sel if r["subject"] == s])) for s in subjects}
-            out[key][minutes] = {"score": float(np.mean(per_seed)), "sd": float(np.std(per_seed)),
-                                 "subjects": per_subject, "seeds": seeds}
+            out[key][minutes] = {
+                "score": float(np.mean(per_seed)),
+                "sd": float(np.std(per_seed)),
+                "subjects": per_subject,
+                "seeds": seeds,
+            }
     (OUT.parent / "calibration.json").write_text(json.dumps(out, indent=2))
     return out
 

@@ -1,4 +1,5 @@
 """All tunable settings in one place. Values are fixed before looking at the test set."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -36,8 +37,9 @@ class FeatureConfig:
 DEFAULT_FEATURES = FeatureConfig()
 
 # finer high-gamma resolution (FingerFlex used dozens of wavelet bands; here eight 20 Hz bands up to 190 Hz)
-FINE_HG_FEATURES = FeatureConfig(bands=((8, 12), (18, 24), (70, 90), (90, 110), (110, 130), (130, 150), (150, 170),
-                                        (170, 190)))
+FINE_HG_FEATURES = FeatureConfig(
+    bands=((8, 12), (18, 24), (70, 90), (90, 110), (110, 130), (130, 150), (150, 170), (170, 190))
+)
 
 # Liang and Bougrain (2012): amplitude modulation in three bands, 40 ms non-overlapping windows
 LIANG_FEATURES = FeatureConfig(bands=((1, 60), (60, 100), (100, 199)), window_ms=40, include_lmp=False)

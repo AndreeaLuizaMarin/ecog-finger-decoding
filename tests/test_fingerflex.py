@@ -1,4 +1,5 @@
 """FingerFlex re-implementation: the causal form is causal, the published form is not, and both run end to end."""
+
 import numpy as np
 import pytest
 import torch

@@ -13,6 +13,7 @@ Nothing here feeds back into any decoder.
 Usage:
     python scripts/robustness_curve.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,8 +32,11 @@ from ecogdecode.models.training import predict_sequence
 from ecogdecode.pipeline import evaluate, prepare, top_electrodes
 from ecogdecode.provenance import environment, record_test_look
 
-VARIANTS = {"lstm": ("lstm", TUNED_LSTM), "lstm_selected": ("lstm_selected", TUNED_LSTM),
-            "lstm_selected_dropout": ("lstm_selected", replace(TUNED_LSTM, channel_dropout=0.1))}
+VARIANTS = {
+    "lstm": ("lstm", TUNED_LSTM),
+    "lstm_selected": ("lstm_selected", TUNED_LSTM),
+    "lstm_selected_dropout": ("lstm_selected", replace(TUNED_LSTM, channel_dropout=0.1)),
+}
 BEST_FIRST = range(0, 9)
 RANDOM_K = (1, 2, 4, 8, 16)
 DRAWS = 20
@@ -60,12 +64,20 @@ def main() -> None:
             res = run_network(prep, key, seed=0, protocol=DEFAULT_PROTOCOL, train_cfg=cfg)
             used = res.selected.get("electrodes", list(range(n_el)))
             best = [silenced_score(res, prep, data.test_flex, used, ranking[:k]) for k in BEST_FIRST]
-            random = {str(k): [silenced_score(res, prep, data.test_flex, used, d) for d in ds] for k, ds in draws.items()}
-            entry[name] = {"electrodes_used": len(used), "best_first": best,
-                           "random_mean": {k: float(np.mean(v)) for k, v in random.items()},
-                           "random_sd": {k: float(np.std(v)) for k, v in random.items()}}
-            print(f"S{s} {name:<22} intact {best[0]:.3f}  best-first k=1 {best[1]:.3f}  k=4 {best[4]:.3f}  "
-                  f"k=8 {best[8]:.3f}  random k=4 {entry[name]['random_mean']['4']:.3f}", flush=True)
+            random = {
+                str(k): [silenced_score(res, prep, data.test_flex, used, d) for d in ds] for k, ds in draws.items()
+            }
+            entry[name] = {
+                "electrodes_used": len(used),
+                "best_first": best,
+                "random_mean": {k: float(np.mean(v)) for k, v in random.items()},
+                "random_sd": {k: float(np.std(v)) for k, v in random.items()},
+            }
+            print(
+                f"S{s} {name:<22} intact {best[0]:.3f}  best-first k=1 {best[1]:.3f}  k=4 {best[4]:.3f}  "
+                f"k=8 {best[8]:.3f}  random k=4 {entry[name]['random_mean']['4']:.3f}",
+                flush=True,
+            )
         report["subjects"][str(s)] = entry
     Path(args.out).write_text(json.dumps(report, indent=2))
 
@@ -77,7 +89,7 @@ def silenced_score(res, prep, test_flex: np.ndarray, used: list[int], lost: list
     for e in lost:
         if e in used:
             col = used.index(e) * npc
-            x[prep.test_rows, col:col + npc] = 0.0  # standardised features: 0 = training mean
+            x[prep.test_rows, col : col + npc] = 0.0  # standardised features: 0 = training mean
     pred = causal_ema(predict_sequence(res.model, x), res.selected["smooth_ms"])
     return evaluate(prep, pred, test_flex)["score"]
 
@@ -86,7 +98,7 @@ def _relatedness(prep, electrode: int) -> float:
     """Largest absolute correlation between any feature of the electrode and any finger in the training rows
     (the ranking used by approach 5b, pipeline.top_electrodes)."""
     npc = prep.cfg.n_per_channel
-    x = prep.x[prep.train_rows, electrode * npc:(electrode + 1) * npc]
+    x = prep.x[prep.train_rows, electrode * npc : (electrode + 1) * npc]
     y = np.nan_to_num(prep.y[prep.train_rows])
     xz = (x - x.mean(0)) / (x.std(0) + 1e-9)
     yz = (y - y.mean(0)) / (y.std(0) + 1e-9)

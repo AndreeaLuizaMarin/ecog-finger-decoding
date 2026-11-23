@@ -1,5 +1,6 @@
 """Offline replicas, offline features and the Kalman variants: they run, keep their shapes, and the offline
 pieces really do use the future (which is why they cannot run live)."""
+
 from dataclasses import replace
 
 import numpy as np
@@ -7,8 +8,14 @@ import numpy as np
 from ecogdecode.config import DEFAULT_FEATURES
 from ecogdecode.features import extract_features
 from ecogdecode.models import DiscriminativeKalmanDecoder, LaggedKalmanDecoder, LaggedRidge
-from ecogdecode.offline import (LiangBougrainOffline, flamary_states, run_flamary_offline, run_liang_offline,
-                                upsample_hold, upsample_linear)
+from ecogdecode.offline import (
+    LiangBougrainOffline,
+    flamary_states,
+    run_flamary_offline,
+    run_liang_offline,
+    upsample_hold,
+    upsample_linear,
+)
 
 
 def _toy(n_train=20000, n_test=8000, channels=4, seed=0):
@@ -71,7 +78,7 @@ def test_movement_periods_fill_short_gaps_only():
 def test_kalman_variants_run():
     rng = np.random.default_rng(2)
     y = np.cumsum(rng.standard_normal((3000, 5)) * 0.1, axis=0)
-    x = np.hstack([y, y ** 2]) + 0.5 * rng.standard_normal((3000, 10))
+    x = np.hstack([y, y**2]) + 0.5 * rng.standard_normal((3000, 10))
     fit = slice(0, 2000)
     kf = LaggedKalmanDecoder(4, 3).fit(x[fit], y[fit])
     assert kf.predict(x).shape == y.shape

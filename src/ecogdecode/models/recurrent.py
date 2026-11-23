@@ -1,4 +1,5 @@
 """Recurrent decoders: an LSTM and a controlled neural ODE (continuous-time latent dynamics)."""
+
 from __future__ import annotations
 
 import torch
@@ -7,8 +8,7 @@ from torch import nn
 
 # --------------------------------------------------------------------------- LSTM
 class LSTMDecoder(nn.Module):
-    def __init__(self, n_features: int, n_outputs: int = 5, hidden: int = 128, layers: int = 1,
-                 dropout: float = 0.2):
+    def __init__(self, n_features: int, n_outputs: int = 5, hidden: int = 128, layers: int = 1, dropout: float = 0.2):
         super().__init__()
         self.inp = nn.Sequential(nn.Dropout(dropout), nn.Linear(n_features, hidden), nn.GELU())
         self.rnn = nn.LSTM(hidden, hidden, num_layers=layers, batch_first=True)
@@ -48,8 +48,7 @@ class ODEDecoder(nn.Module):
     time constants tau give each latent unit its own timescale.
     """
 
-    def __init__(self, n_features: int, n_outputs: int = 5, hidden: int = 64, d_input: int = 64,
-                 dropout: float = 0.2):
+    def __init__(self, n_features: int, n_outputs: int = 5, hidden: int = 64, d_input: int = 64, dropout: float = 0.2):
         super().__init__()
         self.inp = nn.Sequential(nn.Dropout(dropout), nn.Linear(n_features, d_input), nn.GELU())
         self.f = nn.Linear(hidden + d_input, hidden)

@@ -9,6 +9,7 @@ Needs the competition data (with the test labels).
 Usage:
     python scripts/verify_scores.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,9 +51,13 @@ def main() -> None:
             pred = np.load(path).astype(np.float64)
             mine = score_1khz(upsample_linear(pred, np.arange(len(pred)) * 40, len(d.test_ecog)), d.test_flex)[0]
             stored = replicas[str(s)][key]["score"]
-            note = ("" if key.startswith("liang_offline") else
-                    "  (output was at 250 Hz; saved at 25 Hz, so small differences are expected)" if key.startswith("flamary")
-                    else "  (stored score used a hold, not interpolation)")
+            note = (
+                ""
+                if key.startswith("liang_offline")
+                else "  (output was at 250 Hz; saved at 25 Hz, so small differences are expected)"
+                if key.startswith("flamary")
+                else "  (stored score used a hold, not interpolation)"
+            )
             if not note:
                 worst = max(worst, abs(mine - stored))
             print(f"S{s} {key:<22} recomputed {mine:.4f}   stored {stored:.4f}{note}")
@@ -62,8 +67,10 @@ def main() -> None:
                 continue
             pred = np.load(path).astype(np.float64)
             mine = score_1khz(upsample_linear(pred, np.arange(len(pred)) * 40, len(d.test_ecog)), d.test_flex)[0]
-            print(f"S{s} {name:<22} recomputed {mine:.4f}   stored {stored:.4f}  (saved at 25 Hz from a finer output, "
-                  "so small differences are expected)")
+            print(
+                f"S{s} {name:<22} recomputed {mine:.4f}   stored {stored:.4f}  (saved at 25 Hz from a finer output, "
+                "so small differences are expected)"
+            )
     print(f"largest difference: {worst:.2e}")
 
 

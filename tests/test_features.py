@@ -29,7 +29,7 @@ def test_streaming_extractor_matches_batch(synthetic_subject):
     ecog = synthetic_subject.train_ecog[:8_000]
     x_batch, _ = extract_features(ecog)
     stream = StreamingFeatureExtractor(ecog.shape[1])
-    x_stream = np.stack([stream.process(ecog[i:i + 40]) for i in range(0, len(ecog), 40)])
+    x_stream = np.stack([stream.process(ecog[i : i + 40]) for i in range(0, len(ecog), 40)])
     np.testing.assert_allclose(x_stream, x_batch, rtol=1e-4, atol=1e-4)
 
 

@@ -9,6 +9,7 @@ super-sampled to 1 kHz by the organisers.
 The data are not redistributed with this repository: download them from
 https://www.bbci.de/competition/iv/ (see README).
 """
+
 from __future__ import annotations
 
 import zipfile
@@ -19,6 +20,7 @@ import numpy as np
 import scipy.io
 
 from .config import FS  # noqa: F401  (re-exported)
+
 FINGERS = ("thumb", "index", "middle", "ring", "little")
 SCORED_FINGERS = (0, 1, 2, 4)  # official metric excludes the ring finger (correlated with middle/little)
 SUBJECTS = (1, 2, 3)
@@ -56,7 +58,7 @@ def _loadmat(path: Path) -> dict[str, np.ndarray]:
         import h5py
 
         with h5py.File(path, "r") as f:
-            return {k: np.array(f[k]).T for k in f.keys()}
+            return {k: np.array(f[k]).T for k in f}
 
 
 def _locate(data_dir: Path, filename: str) -> Path:
@@ -81,8 +83,11 @@ def _pick(mat: dict[str, np.ndarray], preferred: tuple[str, ...], n_cols: int | 
     for name in preferred:
         if name in mat:
             return np.asarray(mat[name])
-    candidates = [v for v in mat.values() if isinstance(v, np.ndarray) and v.ndim == 2
-                  and (n_cols is None or v.shape[1] == n_cols)]
+    candidates = [
+        v
+        for v in mat.values()
+        if isinstance(v, np.ndarray) and v.ndim == 2 and (n_cols is None or v.shape[1] == n_cols)
+    ]
     if len(candidates) == 1:
         return candidates[0]
     raise KeyError(f"Could not identify the variable among {sorted(mat)} (wanted one of {preferred}).")

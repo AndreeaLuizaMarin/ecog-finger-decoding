@@ -6,6 +6,7 @@ and trailing windows between calls; it reproduces ``features.extract_features`` 
 whole recording through features + decoder, checks the result against the offline
 prediction and measures the per-step latency.
 """
+
 from __future__ import annotations
 
 import time
@@ -18,8 +19,16 @@ from scipy import signal
 from .config import DEFAULT_FEATURES, FeatureConfig
 from .export import export_onnx, latency_summary, onnx_session
 from .features import Standardiser, band_filters, mask_artefact_channels, notch_filters, rereference
-from .models import (LSTMDecoder, LSTMStep, POSSMDecoder, POSSMStep, S4DDecoder, S4DStep, StateGatedDecoder,
-                     StateGatedStep)
+from .models import (
+    LSTMDecoder,
+    LSTMStep,
+    POSSMDecoder,
+    POSSMStep,
+    S4DDecoder,
+    S4DStep,
+    StateGatedDecoder,
+    StateGatedStep,
+)
 
 
 class StreamingFeatureExtractor:
@@ -67,8 +76,14 @@ def single_step(model: torch.nn.Module):
     raise TypeError(f"no single-step form for {type(model).__name__}")
 
 
-def run_online(ecog: np.ndarray, extractor: StreamingFeatureExtractor, scaler: Standardiser, session,
-               state: dict[str, np.ndarray], state_map: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
+def run_online(
+    ecog: np.ndarray,
+    extractor: StreamingFeatureExtractor,
+    scaler: Standardiser,
+    session,
+    state: dict[str, np.ndarray],
+    state_map: dict[str, str],
+) -> tuple[np.ndarray, np.ndarray]:
     """Stream a raw recording through features + ONNX decoder; returns outputs and per-step latency (ms)."""
     hop = extractor.cfg.hop
     names = [o.name for o in session.get_outputs()]
@@ -76,7 +91,7 @@ def run_online(ecog: np.ndarray, extractor: StreamingFeatureExtractor, scaler: S
     outputs, latencies = [], []
     for start in range(0, len(ecog) - hop + 1, hop):
         t0 = time.perf_counter()
-        x_std = scaler.transform(extractor.process(ecog[start:start + hop]))
+        x_std = scaler.transform(extractor.process(ecog[start : start + hop]))
         x_std, _ = mask_artefact_channels(x_std, extractor.cfg.n_per_channel, extractor.cfg.artefact_z)
         feeds["x"] = x_std[None]
         result = dict(zip(names, session.run(None, feeds)))
@@ -87,16 +102,32 @@ def run_online(ecog: np.ndarray, extractor: StreamingFeatureExtractor, scaler: S
     return np.asarray(outputs), np.asarray(latencies)
 
 
-def replay_online(model: torch.nn.Module, x_offline: np.ndarray, x_scaler: Standardiser, ecog: np.ndarray,
-                  cfg: FeatureConfig, onnx_path: str | Path) -> dict:
+def replay_online(
+    model: torch.nn.Module,
+    x_offline: np.ndarray,
+    x_scaler: Standardiser,
+    ecog: np.ndarray,
+    cfg: FeatureConfig,
+    onnx_path: str | Path,
+) -> dict:
     """Export, replay the whole recording online, compare with the offline output, time each step."""
     step, state0, in_names, out_names = single_step(model.eval())
-    path = export_onnx(step, (torch.zeros(1, x_offline.shape[1]), *state0), ["x", *in_names], ["y", *out_names],
-                       onnx_path)
+    path = export_onnx(
+        step, (torch.zeros(1, x_offline.shape[1]), *state0), ["x", *in_names], ["y", *out_names], onnx_path
+    )
     state = {n: s.numpy() for n, s in zip(in_names, state0)}
-    streamed, latencies = run_online(ecog, StreamingFeatureExtractor(ecog.shape[1], cfg), x_scaler,
-                                     onnx_session(path, threads=1), state, dict(zip(out_names, in_names)))
+    streamed, latencies = run_online(
+        ecog,
+        StreamingFeatureExtractor(ecog.shape[1], cfg),
+        x_scaler,
+        onnx_session(path, threads=1),
+        state,
+        dict(zip(out_names, in_names)),
+    )
     with torch.no_grad():
         offline = model(torch.from_numpy(x_offline)[None])[0].numpy()
-    return {"onnx_file": Path(path).name, "max_abs_diff_vs_offline": float(np.abs(streamed - offline).max()),
-            **latency_summary(latencies)}
+    return {
+        "onnx_file": Path(path).name,
+        "max_abs_diff_vs_offline": float(np.abs(streamed - offline).max()),
+        **latency_summary(latencies),
+    }

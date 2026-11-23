@@ -7,6 +7,7 @@
 Each part is results/runs/parts/<key>__<tag>.json. The merged file has the same layout as an unsplit run: per subject
 the single-model runs sorted by seed, their mean and SD, and the SD over seeds of the subject-averaged score.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,13 +30,21 @@ def merge(reports: list[dict]) -> dict:
     for s in sorted(runs, key=int):
         chosen = [runs[s][seed] for seed in seeds]
         scores = [r["score"] for r in chosen]
-        subjects[s] = {"val_score": float(np.mean([r["val_score"] for r in chosen])), "score": float(np.mean(scores)),
-                       "sd": float(np.std(scores)), "r": np.mean([r["r"] for r in chosen], axis=0).tolist(),
-                       "runs": chosen}
+        subjects[s] = {
+            "val_score": float(np.mean([r["val_score"] for r in chosen])),
+            "score": float(np.mean(scores)),
+            "sd": float(np.std(scores)),
+            "r": np.mean([r["r"] for r in chosen], axis=0).tolist(),
+            "runs": chosen,
+        }
     seed_means = [np.mean([subjects[s]["runs"][i]["score"] for s in subjects]) for i in range(len(seeds))]
     merged["protocol"] = {**merged.get("protocol", {}), "seeds": seeds}
-    merged.update(subjects=subjects, val_score=float(np.mean([e["val_score"] for e in subjects.values()])),
-                  score=float(np.mean([e["score"] for e in subjects.values()])), sd=float(np.std(seed_means)))
+    merged.update(
+        subjects=subjects,
+        val_score=float(np.mean([e["val_score"] for e in subjects.values()])),
+        score=float(np.mean([e["score"] for e in subjects.values()])),
+        sd=float(np.std(seed_means)),
+    )
     return merged
 
 
@@ -53,8 +62,10 @@ def main() -> None:
         merged["parts"] = [p.name for p in parts]
         (runs_dir / f"{key}.json").write_text(json.dumps(merged, indent=2))
         per_subject = "  ".join(f"S{s} {e['score']:.3f}" for s, e in merged["subjects"].items())
-        print(f"{key}: test {merged['score']:.3f} ± {merged['sd']:.3f} over seeds {merged['protocol']['seeds']} "
-              f"({per_subject})")
+        print(
+            f"{key}: test {merged['score']:.3f} ± {merged['sd']:.3f} over seeds {merged['protocol']['seeds']} "
+            f"({per_subject})"
+        )
 
 
 if __name__ == "__main__":

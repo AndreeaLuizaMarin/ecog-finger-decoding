@@ -17,6 +17,7 @@ Parts, each saved to results/offline/:
 Usage:
     python scripts/offline_study.py --data-dir data --parts liang flamary wiener selection smoothing
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,8 +35,14 @@ from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.evaluation import score
 from ecogdecode.models import LSTMDecoder, train_sequence_model
 from ecogdecode.models.linear import lag_matrix
-from ecogdecode.offline import (run_fingerflex_offline, run_flamary_offline, run_liang_offline, score_1khz,
-                               upsample_hold, upsample_linear)
+from ecogdecode.offline import (
+    run_fingerflex_offline,
+    run_flamary_offline,
+    run_liang_offline,
+    score_1khz,
+    upsample_hold,
+    upsample_linear,
+)
 from ecogdecode.pipeline import keep_electrodes, prepare, standardise, top_electrodes, with_test_labels
 from ecogdecode.provenance import record_test_look
 
@@ -67,8 +74,11 @@ def _merge(name: str, key: str, s: int, row: dict) -> None:
 def part_liang(data_dir: str) -> None:
     for s in SUBJECTS:
         d = load_subject(data_dir, s)
-        for name, kwargs in {"liang_offline": {}, "liang_offline_intercept": {"intercept": True},
-                             "liang_causal": {"causal": True}}.items():
+        for name, kwargs in {
+            "liang_offline": {},
+            "liang_offline_intercept": {"intercept": True},
+            "liang_causal": {"causal": True},
+        }.items():
             out = run_liang_offline(d.train_ecog, d.train_flex, d.test_ecog, **kwargs)
             r, per = score_1khz(out["pred_1khz"], d.test_flex)
             _merge("replicas", name, s, {"score": r, "r_per_finger": per, "pairs": out["pairs"]})
@@ -79,8 +89,9 @@ def part_liang(data_dir: str) -> None:
 def part_flamary(data_dir: str) -> None:
     for s in SUBJECTS:
         d = load_subject(data_dir, s)
-        out = run_flamary_offline(d.train_ecog, d.train_flex, d.test_ecog,
-                                  log=lambda m, s=s: print(f"S{s} {m}", flush=True))
+        out = run_flamary_offline(
+            d.train_ecog, d.train_flex, d.test_ecog, log=lambda m, s=s: print(f"S{s} {m}", flush=True)
+        )
         r, per = score_1khz(out["pred_1khz"], d.test_flex)
         _merge("replicas", "flamary_offline", s, {"score": r, "r_per_finger": per, "chosen": out["chosen"]})
         save_pred("flamary_offline", s, out["pred_1khz"])
@@ -93,10 +104,18 @@ def part_diagnostics(data_dir: str) -> None:
     depends on it. Not part of any method; reported as a diagnostic."""
     d = load_subject(data_dir, 3)
     rows = {}
-    for name, fn in (("liang_offline_without_e49", lambda: run_liang_offline(d.train_ecog, d.train_flex,
-                                                                              d.test_ecog, exclude=(49,))),
-                     ("flamary_offline_without_e49", lambda: run_flamary_offline(
-                         d.train_ecog, d.train_flex, d.test_ecog, log=lambda m: print(f"S3 {m}"), exclude=(49,)))):
+    for name, fn in (
+        (
+            "liang_offline_without_e49",
+            lambda: run_liang_offline(d.train_ecog, d.train_flex, d.test_ecog, exclude=(49,)),
+        ),
+        (
+            "flamary_offline_without_e49",
+            lambda: run_flamary_offline(
+                d.train_ecog, d.train_flex, d.test_ecog, log=lambda m: print(f"S3 {m}"), exclude=(49,)
+            ),
+        ),
+    ):
         r, per = score_1khz(fn()["pred_1khz"], d.test_flex)
         rows[name] = {"score": r, "r_per_finger": per}
         print(f"S3 {name:<30} r = {r:.3f}", flush=True)
@@ -110,7 +129,7 @@ def lead_lag_matrix(x: np.ndarray, past: int, future: int) -> np.ndarray:
     if future:
         lead = np.zeros((len(x), x.shape[1] * future), dtype=x.dtype)
         for k in range(1, future + 1):
-            lead[: len(x) - k, (k - 1) * x.shape[1]:k * x.shape[1]] = x[k:]
+            lead[: len(x) - k, (k - 1) * x.shape[1] : k * x.shape[1]] = x[k:]
         blocks.append(lead)
     return np.hstack(blocks)
 
@@ -134,11 +153,11 @@ def part_wiener(data_dir: str) -> None:
     for s in SUBJECTS:
         d = load_subject(data_dir, s)
         rows = {}
-        for name, cfg, past, future in (("live: causal features, past lags", DEFAULT_FEATURES, 10, 0),
-                                        ("zero-phase centred features, past lags",
-                                         replace(DEFAULT_FEATURES, offline=True), 10, 0),
-                                        ("zero-phase centred features, past and future lags",
-                                         replace(DEFAULT_FEATURES, offline=True), 10, 10)):
+        for name, cfg, past, future in (
+            ("live: causal features, past lags", DEFAULT_FEATURES, 10, 0),
+            ("zero-phase centred features, past lags", replace(DEFAULT_FEATURES, offline=True), 10, 0),
+            ("zero-phase centred features, past and future lags", replace(DEFAULT_FEATURES, offline=True), 10, 10),
+        ):
             prep = prepare(d, cfg)
             sc = standardise(prep, prep.fit_rows)
             design = lead_lag_matrix(sc.x, past, future)
@@ -170,19 +189,32 @@ def part_selection(data_dir: str, seeds=(0, 1, 2), max_epochs: int = 60) -> None
         for seed in seeds:
             torch.manual_seed(seed)
             model = LSTMDecoder(sc.x.shape[1], hidden=256, dropout=0.4)
-            cfg = replace(TUNED_LSTM, seed=seed, max_epochs=max_epochs, patience=10 ** 6)
-            history = train_sequence_model(model, sc.x, sc.y, prep.train_rows, prep.test_rows, score, cfg,
-                                           n_per_channel=prep.cfg.n_per_channel)
+            cfg = replace(TUNED_LSTM, seed=seed, max_epochs=max_epochs, patience=10**6)
+            history = train_sequence_model(
+                model, sc.x, sc.y, prep.train_rows, prep.test_rows, score, cfg, n_per_channel=prep.cfg.n_per_channel
+            )
             curve = [h["val_score"] for h in history]  # here: score on the TEST block after every epoch
             chosen = runs["subjects"][str(s)]["runs"][seeds.index(seed)]["selected"]["epochs"]
-            rows.append({"seed": seed, "test_curve": curve, "epochs_chosen_on_validation": chosen,
-                         "at_validation_choice": curve[chosen - 1], "best_on_test": max(curve),
-                         "best_epoch_on_test": int(np.argmax(curve)) + 1})
-            print(f"S{s} seed {seed}: validation-chosen epoch {chosen} -> {curve[chosen - 1]:.3f}; "
-                  f"best test epoch {int(np.argmax(curve)) + 1} -> {max(curve):.3f}", flush=True)
+            rows.append(
+                {
+                    "seed": seed,
+                    "test_curve": curve,
+                    "epochs_chosen_on_validation": chosen,
+                    "at_validation_choice": curve[chosen - 1],
+                    "best_on_test": max(curve),
+                    "best_epoch_on_test": int(np.argmax(curve)) + 1,
+                }
+            )
+            print(
+                f"S{s} seed {seed}: validation-chosen epoch {chosen} -> {curve[chosen - 1]:.3f}; "
+                f"best test epoch {int(np.argmax(curve)) + 1} -> {max(curve):.3f}",
+                flush=True,
+            )
         report[str(s)] = rows
-    report["mean"] = {k: float(np.mean([r[k] for s in SUBJECTS for r in report[str(s)]]))
-                      for k in ("at_validation_choice", "best_on_test")}
+    report["mean"] = {
+        k: float(np.mean([r[k] for s in SUBJECTS for r in report[str(s)]]))
+        for k in ("at_validation_choice", "best_on_test")
+    }
     save("selection", report)
 
 
@@ -194,13 +226,17 @@ def part_smoothing(data_dir: str) -> None:
         prep = prepare(d)
         pred = np.load(f"results/preds/lstm_selected_sub{s}.npy")[1:]  # seed-0 model, test steps
         t = prep.ends[prep.test_rows] - prep.n_train_samples
-        rows = {"live (as scored)": score_1khz(upsample_hold(pred, t, len(d.test_ecog)), d.test_flex)[0],
-                "linear interpolation only (uses the next output)":
-                    score_1khz(upsample_linear(pred, t, len(d.test_ecog)), d.test_flex)[0]}
+        rows = {
+            "live (as scored)": score_1khz(upsample_hold(pred, t, len(d.test_ecog)), d.test_flex)[0],
+            "linear interpolation only (uses the next output)": score_1khz(
+                upsample_linear(pred, t, len(d.test_ecog)), d.test_flex
+            )[0],
+        }
         for sigma_ms in (40, 60, 120):
             smooth = gaussian_filter1d(pred, sigma=sigma_ms / 40, axis=0)  # centred: uses future outputs
             rows[f"centred Gaussian, sigma {sigma_ms} ms, interpolated"] = score_1khz(
-                upsample_linear(smooth, t, len(d.test_ecog)), d.test_flex)[0]
+                upsample_linear(smooth, t, len(d.test_ecog)), d.test_flex
+            )[0]
         report[str(s)] = rows
         print(f"S{s}", {k: round(v, 3) for k, v in rows.items()}, flush=True)
     report["mean"] = {k: float(np.mean([report[str(s)][k] for s in SUBJECTS])) for k in report["1"]}
@@ -222,9 +258,12 @@ def part_fingerflex(data_dir: str, subjects=SUBJECTS, seeds=(0,)) -> None:
                     save_pred(f"fingerflex_{kind}", s, res[kind]["pred_1khz"])
                 res[kind].pop("pred_1khz")
             (folder / f"s{s}_seed{seed}.json").write_text(json.dumps(res, indent=2))
-            print(f"S{s} seed {seed}: published {res['published']['score']:.3f} (epoch {res['published']['epoch']}), "
-                  f"epoch chosen on validation {res['validation_epoch']['score']:.3f} "
-                  f"(epoch {res['validation_epoch']['epoch']})", flush=True)
+            print(
+                f"S{s} seed {seed}: published {res['published']['score']:.3f} (epoch {res['published']['epoch']}), "
+                f"epoch chosen on validation {res['validation_epoch']['score']:.3f} "
+                f"(epoch {res['validation_epoch']['epoch']})",
+                flush=True,
+            )
     merge_fingerflex()
 
 
@@ -239,13 +278,18 @@ def merge_fingerflex() -> None:
     report: dict = {"seeds": seeds}
     for kind in ("published", "validation_epoch"):
         per_subject = {s: [runs[s][seed][kind] for seed in seeds] for s in sorted(runs, key=int)}
-        means = {s: {m: float(np.mean([r[m] for r in rs])) for m in ("score", "notebook_metric")}
-                 for s, rs in per_subject.items()}
+        means = {
+            s: {m: float(np.mean([r[m] for r in rs])) for m in ("score", "notebook_metric")}
+            for s, rs in per_subject.items()
+        }
         seed_scores = [np.mean([per_subject[s][i]["score"] for s in per_subject]) for i in range(len(seeds))]
-        report[kind] = {"subjects": means, "epochs": {s: [r["epoch"] for r in rs] for s, rs in per_subject.items()},
-                        "score": float(np.mean([m["score"] for m in means.values()])),
-                        "notebook_metric": float(np.mean([m["notebook_metric"] for m in means.values()])),
-                        "sd": float(np.std(seed_scores))}
+        report[kind] = {
+            "subjects": means,
+            "epochs": {s: [r["epoch"] for r in rs] for s, rs in per_subject.items()},
+            "score": float(np.mean([m["score"] for m in means.values()])),
+            "notebook_metric": float(np.mean([m["notebook_metric"] for m in means.values()])),
+            "sd": float(np.std(seed_scores)),
+        }
     save("fingerflex", report)
 
 
@@ -263,8 +307,14 @@ def main() -> None:
         if part == "fingerflex":
             part_fingerflex(args.data_dir, args.subjects, tuple(args.seeds))
             continue
-        {"liang": part_liang, "flamary": part_flamary, "diagnostics": part_diagnostics, "wiener": part_wiener,
-         "selection": part_selection, "smoothing": part_smoothing}[part](args.data_dir)
+        {
+            "liang": part_liang,
+            "flamary": part_flamary,
+            "diagnostics": part_diagnostics,
+            "wiener": part_wiener,
+            "selection": part_selection,
+            "smoothing": part_smoothing,
+        }[part](args.data_dir)
 
 
 if __name__ == "__main__":

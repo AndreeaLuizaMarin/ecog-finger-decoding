@@ -17,6 +17,7 @@ Everything is causal (attention is within the current step, the GRU runs forward
 artefact, set to the training mean) still contributes its embedding; ``key_padding_mask`` support is left out to keep
 the single-step form exportable.
 """
+
 from __future__ import annotations
 
 import torch
@@ -26,8 +27,15 @@ from torch import nn
 class ElectrodeTokenizer(nn.Module):
     """Electrode tokens -> ``n_latents`` x ``d_model`` latents per step, by cross-attention."""
 
-    def __init__(self, n_channels: int, n_per_channel: int, d_model: int = 64, n_latents: int = 4, n_heads: int = 4,
-                 dropout: float = 0.1):
+    def __init__(
+        self,
+        n_channels: int,
+        n_per_channel: int,
+        d_model: int = 64,
+        n_latents: int = 4,
+        n_heads: int = 4,
+        dropout: float = 0.1,
+    ):
         super().__init__()
         self.n_channels, self.n_per_channel = n_channels, n_per_channel
         self.value = nn.Linear(n_per_channel, d_model)  # shared across electrodes and patients
@@ -55,11 +63,20 @@ class ElectrodeTokenizer(nn.Module):
 class POSSMDecoder(nn.Module):
     """Electrode tokenizer -> GRU -> linear read-out."""
 
-    def __init__(self, n_features: int, n_per_channel: int, n_outputs: int = 5, d_model: int = 64,
-                 n_latents: int = 4, hidden: int = 256, dropout: float = 0.1):
+    def __init__(
+        self,
+        n_features: int,
+        n_per_channel: int,
+        n_outputs: int = 5,
+        d_model: int = 64,
+        n_latents: int = 4,
+        hidden: int = 256,
+        dropout: float = 0.1,
+    ):
         super().__init__()
-        self.tokenizer = ElectrodeTokenizer(n_features // n_per_channel, n_per_channel, d_model, n_latents,
-                                            dropout=dropout)
+        self.tokenizer = ElectrodeTokenizer(
+            n_features // n_per_channel, n_per_channel, d_model, n_latents, dropout=dropout
+        )
         self.rnn = nn.GRU(n_latents * d_model, hidden, batch_first=True)
         self.out = nn.Linear(hidden, n_outputs)
 
@@ -67,7 +84,7 @@ class POSSMDecoder(nn.Module):
         h, _ = self.rnn(self.tokenizer(x))
         return self.out(h)
 
-    def new_patient(self, n_features: int) -> "POSSMDecoder":
+    def new_patient(self, n_features: int) -> POSSMDecoder:
         self.tokenizer.new_patient(n_features // self.tokenizer.n_per_channel)
         return self
 

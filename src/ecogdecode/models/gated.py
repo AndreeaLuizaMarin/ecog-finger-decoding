@@ -5,6 +5,7 @@ experts; a gate decides, at every step, which expert to trust. ``StateGatedDecod
 slow, LFP-like part of the ECoG; ``TransientGatedDecoder`` also gives the gate movement onset and
 offset transients (inspired by Dekleva et al., 2021) and compresses its inputs with PCA.
 """
+
 from __future__ import annotations
 
 import math
@@ -61,14 +62,26 @@ class StateGatedDecoder(nn.Module):
     (an ablation of that hypothesis).
     """
 
-    def __init__(self, n_features: int, n_per_channel: int, n_outputs: int = 5, n_experts: int = 6,
-                 d_gate: int = 32, d_latent: int = 64, slow=(0, 1, 2), gate_features: str = "slow",
-                 dropout: float = 0.2):
+    def __init__(
+        self,
+        n_features: int,
+        n_per_channel: int,
+        n_outputs: int = 5,
+        n_experts: int = 6,
+        d_gate: int = 32,
+        d_latent: int = 64,
+        slow=(0, 1, 2),
+        gate_features: str = "slow",
+        dropout: float = 0.2,
+    ):
         super().__init__()
         n_channels = n_features // n_per_channel
         fast = [j for j in range(n_per_channel) if j not in slow]
         gate_cols = slow if gate_features == "slow" else tuple(range(n_per_channel))
-        idx = lambda cols: torch.tensor([c * n_per_channel + j for c in range(n_channels) for j in cols])
+
+        def idx(cols):
+            return torch.tensor([c * n_per_channel + j for c in range(n_channels) for j in cols])
+
         self.register_buffer("gate_idx", idx(gate_cols))
         self.register_buffer("fast_idx", idx(fast))
         self.gate_in = nn.Sequential(nn.Dropout(dropout), nn.Linear(len(self.gate_idx), d_gate))
@@ -119,8 +132,18 @@ class TransientGatedDecoder(nn.Module):
     training data, a low-dimensional constraint that limits overfitting on small data.
     """
 
-    def __init__(self, slow_components: np.ndarray, fast_components: np.ndarray, slow_idx, fast_idx,
-                 n_outputs: int = 5, n_experts: int = 6, d_gate: int = 32, d_latent: int = 64, dropout: float = 0.2):
+    def __init__(
+        self,
+        slow_components: np.ndarray,
+        fast_components: np.ndarray,
+        slow_idx,
+        fast_idx,
+        n_outputs: int = 5,
+        n_experts: int = 6,
+        d_gate: int = 32,
+        d_latent: int = 64,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.register_buffer("slow_idx", torch.as_tensor(slow_idx))
         self.register_buffer("fast_idx", torch.as_tensor(fast_idx))
@@ -148,11 +171,15 @@ class TransientGatedDecoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _, fast, _ = self._components(x)
-        experts = self.experts(F.gelu(self.expert_li(self.expert_in(fast)))).unflatten(-1, (self.n_experts, self.n_outputs))
+        experts = self.experts(F.gelu(self.expert_li(self.expert_in(fast)))).unflatten(
+            -1, (self.n_experts, self.n_outputs)
+        )
         return (self.gates(x)[..., None] * experts).sum(-2)
 
     @classmethod
-    def from_training_data(cls, x_fit: np.ndarray, n_per_channel: int, k: int = 16, slow=(0, 1, 2)) -> "TransientGatedDecoder":
+    def from_training_data(
+        cls, x_fit: np.ndarray, n_per_channel: int, k: int = 16, slow=(0, 1, 2)
+    ) -> TransientGatedDecoder:
         """Fit the PCA projections on the training rows only and build the model."""
         n_channels = x_fit.shape[1] // n_per_channel
         fast = [j for j in range(n_per_channel) if j not in slow]

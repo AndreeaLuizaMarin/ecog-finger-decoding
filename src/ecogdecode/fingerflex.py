@@ -16,6 +16,7 @@ Two forms share this module:
   The published 200 ms shift between ECoG and fingers is dropped: a causal decoder that kept it would ignore the most
   recent 200 ms of signal (the paper reports the shift is not critical between 0 and 200 ms).
 """
+
 from __future__ import annotations
 
 import copy
@@ -58,7 +59,7 @@ def morlet_wavelets(freqs: np.ndarray = FREQS, fs: int = FS, n_cycles: float = N
         sigma_t = n_cycles / (2.0 * np.pi * f)
         t = np.arange(0.0, 5.0 * sigma_t, 1.0 / fs)
         t = np.r_[-t[::-1], t[1:]]
-        w = np.exp(2j * np.pi * f * t) * np.exp(-(t ** 2) / (2.0 * sigma_t ** 2))
+        w = np.exp(2j * np.pi * f * t) * np.exp(-(t**2) / (2.0 * sigma_t**2))
         out.append((w / (np.sqrt(0.5) * np.linalg.norm(w))).astype(np.complex64))
     return out
 
@@ -76,7 +77,7 @@ def wavelet_power(x: np.ndarray, offline: bool, decim: int = DECIM) -> np.ndarra
     for j, w in enumerate(morlet_wavelets()):
         full = signal.oaconvolve(xc, w[None, :], mode="full", axes=1)  # (channels, n + len(w) - 1)
         start = (len(w) - 1) // 2 if offline else 0  # centred ('same') or causal alignment
-        out[:, :, j] = (np.abs(full[:, start:start + n][:, keep]) ** 2).T
+        out[:, :, j] = (np.abs(full[:, start : start + n][:, keep]) ** 2).T
     return out
 
 
@@ -89,8 +90,9 @@ def _zero_phase(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     return signal.oaconvolve(x, h[:, None], mode="same", axes=0)
 
 
-def preprocess(ecog: np.ndarray, offline: bool, mean: np.ndarray | None = None,
-               std: np.ndarray | None = None) -> np.ndarray:
+def preprocess(
+    ecog: np.ndarray, offline: bool, mean: np.ndarray | None = None, std: np.ndarray | None = None
+) -> np.ndarray:
     """z-score per channel, common median reference, band-pass 40-300 Hz, notch at the 50 Hz harmonics.
 
     Offline (as published): statistics of this recording itself, MNE-style zero-phase FIR filters (331-tap band-pass
@@ -132,7 +134,7 @@ def recording_features(ecog: np.ndarray, offline: bool, stats_end: int | None = 
 class RobustScaler:
     """sklearn's RobustScaler(unit_variance=True, quantile_range=(10, 90)) per feature, without clipping."""
 
-    def fit(self, x: np.ndarray) -> "RobustScaler":
+    def fit(self, x: np.ndarray) -> RobustScaler:
         lo, med, hi = np.percentile(x, [10, 50, 90], axis=0)
         self.center_ = med
         self.scale_ = (hi - lo) / (2 * 1.2815515655446004) + 1e-12  # normal quantile range 10-90 = 2.563 SD
@@ -200,7 +202,7 @@ class _Reduce(nn.Module):
         n = z.shape[1]
         left = self.k - 1 if self.causal else (self.k - 1) // 2  # taps reaching back (and, offline, ahead)
         zp = F.pad(z, (0, 0, 0, 0, left, self.k - 1 - left))
-        out = sum(zp[:, j:j + n, j] for j in range(self.k))  # y[t] = sum_j W_j x[t + j - left]
+        out = sum(zp[:, j : j + n, j] for j in range(self.k))  # y[t] = sum_j W_j x[t + j - left]
         return self.drop(F.gelu(self.norm(out))).transpose(1, 2)
 
 
@@ -259,8 +261,9 @@ def predict(model: FingerFlexNet, x: np.ndarray, chunk: int = 32) -> np.ndarray:
     return model(xt)[0, :, :n].T.numpy()
 
 
-def train(model: FingerFlexNet, x: np.ndarray, y: np.ndarray, rows: slice, cfg: FingerFlexConfig,
-          epochs: int, on_epoch=None) -> list[dict]:
+def train(
+    model: FingerFlexNet, x: np.ndarray, y: np.ndarray, rows: slice, cfg: FingerFlexConfig, epochs: int, on_epoch=None
+) -> list[dict]:
     """Train on every window of ``cfg.window`` samples inside ``rows`` (stride 1, shuffled each epoch).
 
     ``x`` (time, features) and ``y`` (time, 5) are aligned at 100 Hz. ``on_epoch(epoch, model)`` may return a dict
@@ -277,7 +280,7 @@ def train(model: FingerFlexNet, x: np.ndarray, y: np.ndarray, rows: slice, cfg: 
         order = rng.permutation(starts)
         losses = []
         for b in range(0, len(order), cfg.batch_size):
-            idx = torch.from_numpy(order[b:b + cfg.batch_size])[:, None] + offsets
+            idx = torch.from_numpy(order[b : b + cfg.batch_size])[:, None] + offsets
             pred = model(xt[idx])
             loss = _loss(pred, yt[idx].transpose(1, 2))
             opt.zero_grad()

@@ -3,6 +3,7 @@
 Usage:
     python scripts/report_tables.py > results/report_tables.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -68,8 +69,9 @@ def replicas() -> None:
     print("| Variant | S1 | S2 | S3 | Mean |")
     print("|---|---|---|---|---|")
     for key in rep["mean"]:
-        print(f"| {key} | " + " | ".join(f"{rep[s][key]['score']:.3f}" for s in SUBJECTS)
-              + f" | {rep['mean'][key]:.3f} |")
+        print(
+            f"| {key} | " + " | ".join(f"{rep[s][key]['score']:.3f}" for s in SUBJECTS) + f" | {rep['mean'][key]:.3f} |"
+        )
 
 
 def _conditions(name: str) -> None:
@@ -99,8 +101,10 @@ def selection() -> None:
     print("|---|---|---|---|---|---|")
     for s in SUBJECTS:
         for r in sel[s]:
-            print(f"| {s} | {r['seed']} | {r['epochs_chosen_on_validation']} | {r['at_validation_choice']:.3f} | "
-                  f"{r['best_epoch_on_test']} | {r['best_on_test']:.3f} |")
+            print(
+                f"| {s} | {r['seed']} | {r['epochs_chosen_on_validation']} | {r['at_validation_choice']:.3f} | "
+                f"{r['best_epoch_on_test']} | {r['best_on_test']:.3f} |"
+            )
     print(f"| mean | | | {sel['mean']['at_validation_choice']:.3f} | | {sel['mean']['best_on_test']:.3f} |")
 
 
@@ -111,7 +115,10 @@ def diagnostics() -> None:
     rep = load("offline/replicas.json")
     print("| Replica | With every electrode (as published) | Without electrode 49 |")
     print("|---|---|---|")
-    for key, base in (("liang_offline_without_e49", "liang_offline"), ("flamary_offline_without_e49", "flamary_offline")):
+    for key, base in (
+        ("liang_offline_without_e49", "liang_offline"),
+        ("flamary_offline_without_e49", "flamary_offline"),
+    ):
         if key in d:
             print(f"| {base} | {rep['3'][base]['score']:.3f} | {d[key]['score']:.3f} |")
     print()
@@ -126,8 +133,10 @@ def robustness() -> None:
     for key, rows in d.items():
         for s in SUBJECTS:
             r = rows[s]
-            print(f"| {key} | {s} | {r['n_electrodes']} | {r['lost_electrode']} | {r['intact']:.3f} | "
-                  f"{r['one_electrode_lost']:.3f} |")
+            print(
+                f"| {key} | {s} | {r['n_electrodes']} | {r['lost_electrode']} | {r['intact']:.3f} | "
+                f"{r['one_electrode_lost']:.3f} |"
+            )
         print(f"| {key} | mean | | | {rows['mean']['intact']:.3f} | {rows['mean']['one_electrode_lost']:.3f} |")
     print()
 
@@ -138,15 +147,19 @@ def fingerflex() -> None:
         return
     print("| FingerFlex, offline | S1 | S2 | S3 | Mean ± SD over seeds | Notebook metric | Epochs kept (per subject) |")
     print("|---|---|---|---|---|---|---|")
-    for kind, label in (("published", "as published: epoch with the best test correlation"),
-                        ("validation_epoch", "epoch chosen on validation")):
+    for kind, label in (
+        ("published", "as published: epoch with the best test correlation"),
+        ("validation_epoch", "epoch chosen on validation"),
+    ):
         k = f[kind]
         subj = " | ".join(f"{k['subjects'][s]['score']:.3f}" for s in SUBJECTS)
         epochs = "; ".join(f"S{s}: {', '.join(map(str, k['epochs'][s]))}" for s in SUBJECTS)
         print(f"| {label} | {subj} | {k['score']:.3f} ± {k['sd']:.3f} | {k['notebook_metric']:.3f} | {epochs} |")
     print()
-    print(f"Seeds: {', '.join(map(str, f['seeds']))}. Competition metric (1 kHz, ring finger excluded); the notebook "
-          "metric is the authors' own (100 Hz, all five fingers, Gaussian sigma 1 sample).")
+    print(
+        f"Seeds: {', '.join(map(str, f['seeds']))}. Competition metric (1 kHz, ring finger excluded); the notebook "
+        "metric is the authors' own (100 Hz, all five fingers, Gaussian sigma 1 sample)."
+    )
     print()
 
 
@@ -159,10 +172,14 @@ def two_by_two() -> None:
     lstm_live = m["approaches"]["lstm_selected"]["score"]
     print("| Method | Designed for | Scored offline | Scored live | Cost of running live |")
     print("|---|---|---|---|---|")
-    print(f"| Liang and Bougrain, 2008 winner | offline | {winner_offline:.3f} (replica) | {winner_live:.3f} "
-          f"(approach 1) | {winner_live - winner_offline:+.3f} |")
-    print(f"| LSTM on selected electrodes | live | {off['score']:.3f} ± {off['sd']:.3f} (bidirectional, zero-phase) | "
-          f"{lstm_live:.3f} (approach 5b) | {lstm_live - off['score']:+.3f} |")
+    print(
+        f"| Liang and Bougrain, 2008 winner | offline | {winner_offline:.3f} (replica) | {winner_live:.3f} "
+        f"(approach 1) | {winner_live - winner_offline:+.3f} |"
+    )
+    print(
+        f"| LSTM on selected electrodes | live | {off['score']:.3f} ± {off['sd']:.3f} (bidirectional, zero-phase) | "
+        f"{lstm_live:.3f} (approach 5b) | {lstm_live - off['score']:+.3f} |"
+    )
     print()
 
 
@@ -170,8 +187,10 @@ def bootstrap() -> None:
     p = load("posthoc.json")
     if not p:
         return
-    print("| Approach | Test r, seed 0 | 95 % interval (test blocks resampled) | Lag at peak (ms) | Envelope r | "
-          "Within-movement r |")
+    print(
+        "| Approach | Test r, seed 0 | 95 % interval (test blocks resampled) | Lag at peak (ms) | Envelope r | "
+        "Within-movement r |"
+    )
     print("|---|---|---|---|---|---|")
     for key in sorted(p["bootstrap"], key=lambda k: -p["bootstrap"][k]["score"]):
         b = p["bootstrap"][key]
@@ -179,8 +198,10 @@ def bootstrap() -> None:
         lag = sum(a["best_lag_ms"] for a in subs) / 3
         env = sum(a["envelope_r"] for a in subs) / 3
         within = sum(a["within_movement_r"] for a in subs) / 3
-        print(f"| {key} | {b['score']:.3f} | {b['ci95'][0]:.3f} to {b['ci95'][1]:.3f} | {lag:.0f} | {env:.3f} | "
-              f"{within:.3f} |")
+        print(
+            f"| {key} | {b['score']:.3f} | {b['ci95'][0]:.3f} to {b['ci95'][1]:.3f} | {lag:.0f} | {env:.3f} | "
+            f"{within:.3f} |"
+        )
     print()
 
 
@@ -191,8 +212,10 @@ def paired() -> None:
     print("| A | B | A minus B | 95 % interval | Share of resamples with A <= B |")
     print("|---|---|---|---|---|")
     for row in p["paired_differences"]:
-        print(f"| {row['a']} | {row['b']} | {row['difference']:+.3f} | {row['ci95'][0]:+.3f} to {row['ci95'][1]:+.3f} "
-              f"| {row['p_not_greater']:.3f} |")
+        print(
+            f"| {row['a']} | {row['b']} | {row['difference']:+.3f} | {row['ci95'][0]:+.3f} to {row['ci95'][1]:+.3f} "
+            f"| {row['p_not_greater']:.3f} |"
+        )
     print()
 
 
@@ -204,8 +227,10 @@ def masking() -> None:
     print("|---|---|---|---|")
     for s in SUBJECTS:
         mk = p["subjects"][s]["masking"]
-        print(f"| {s} | {100 * mk['fraction_of_steps_with_any']:.2f} % | {100 * mk['fraction_of_electrode_steps']:.3f} % "
-              f"| {mk['electrodes_ever_masked']} |")
+        print(
+            f"| {s} | {100 * mk['fraction_of_steps_with_any']:.2f} % | {100 * mk['fraction_of_electrode_steps']:.3f} % "
+            f"| {mk['electrodes_ever_masked']} |"
+        )
     print()
 
 
@@ -220,7 +245,9 @@ def calibration() -> None:
         cells = []
         for mnt in minutes:
             r = rows.get(mnt)
-            cells.append("" if r is None else f"{r['score']:.3f}" + ("" if len(r["seeds"]) < 2 else f" ± {r['sd']:.3f}"))
+            cells.append(
+                "" if r is None else f"{r['score']:.3f}" + ("" if len(r["seeds"]) < 2 else f" ± {r['sd']:.3f}")
+            )
         print(f"| {key} | " + " | ".join(cells) + " |")
     print()
 
@@ -239,10 +266,24 @@ def electrode_loss() -> None:
     print()
 
 
-SECTIONS = {"BENCHMARK": benchmark, "VALIDATION": validation_studies, "ROBUSTNESS": robustness, "KALMAN": kalman,
-            "REPLICAS": replicas, "DIAGNOSTICS": diagnostics, "WIENER": wiener, "SELECTION": selection,
-            "SMOOTHING": smoothing, "FINGERFLEX": fingerflex, "TWO_BY_TWO": two_by_two, "BOOTSTRAP": bootstrap,
-            "PAIRED": paired, "MASKING": masking, "CALIBRATION": calibration, "ELECTRODE_LOSS": electrode_loss}
+SECTIONS = {
+    "BENCHMARK": benchmark,
+    "VALIDATION": validation_studies,
+    "ROBUSTNESS": robustness,
+    "KALMAN": kalman,
+    "REPLICAS": replicas,
+    "DIAGNOSTICS": diagnostics,
+    "WIENER": wiener,
+    "SELECTION": selection,
+    "SMOOTHING": smoothing,
+    "FINGERFLEX": fingerflex,
+    "TWO_BY_TWO": two_by_two,
+    "BOOTSTRAP": bootstrap,
+    "PAIRED": paired,
+    "MASKING": masking,
+    "CALIBRATION": calibration,
+    "ELECTRODE_LOSS": electrode_loss,
+}
 
 
 def render(fn) -> str:

@@ -16,6 +16,7 @@
 Usage:
     python scripts/posthoc.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,9 +37,19 @@ PREDS = Path("results/preds")
 BLOCK = 4000  # samples (4 s) per bootstrap block
 N_BOOT = 2000
 LAGS_MS = np.arange(-400, 401, 10)
-PAIRS = [("lstm_selected", "lstm"), ("lstm_selected", "fingerflex"), ("lstm_selected", "possm"),
-         ("lstm", "mamba"), ("lstm", "tcn"), ("lstm", "s4d"), ("lstm", "wiener"), ("lstm", "possm"),
-         ("possm_pretrained", "possm"), ("wiener", "liang_bougrain"), ("wiener", "kalman")]
+PAIRS = [
+    ("lstm_selected", "lstm"),
+    ("lstm_selected", "fingerflex"),
+    ("lstm_selected", "possm"),
+    ("lstm", "mamba"),
+    ("lstm", "tcn"),
+    ("lstm", "s4d"),
+    ("lstm", "wiener"),
+    ("lstm", "possm"),
+    ("possm_pretrained", "possm"),
+    ("wiener", "liang_bougrain"),
+    ("wiener", "kalman"),
+]
 
 
 def held_1khz(key: str, s: int, n: int) -> np.ndarray | None:
@@ -54,14 +65,16 @@ def block_sums(pred: np.ndarray, true: np.ndarray) -> np.ndarray:
     nb = len(true) // BLOCK
     p = pred[: nb * BLOCK].reshape(nb, BLOCK, -1)
     t = true[: nb * BLOCK].reshape(nb, BLOCK, -1).astype(np.float64)
-    return np.stack([np.full(p.shape[::2], BLOCK, float), p.sum(1), t.sum(1), (p * p).sum(1), (t * t).sum(1),
-                     (p * t).sum(1)], axis=1)
+    return np.stack(
+        [np.full(p.shape[::2], BLOCK, float), p.sum(1), t.sum(1), (p * p).sum(1), (t * t).sum(1), (p * t).sum(1)],
+        axis=1,
+    )
 
 
 def r_from_sums(s: np.ndarray) -> np.ndarray:
     """Pearson r per finger from summed statistics (..., 6, 5)."""
     n, sx, sy, sxx, syy, sxy = (s[..., i, :] for i in range(6))
-    return (n * sxy - sx * sy) / np.sqrt((n * sxx - sx ** 2) * (n * syy - sy ** 2))
+    return (n * sxy - sx * sy) / np.sqrt((n * sxx - sx**2) * (n * syy - sy**2))
 
 
 def lag_profile(pred: np.ndarray, true: np.ndarray) -> np.ndarray:
@@ -71,7 +84,7 @@ def lag_profile(pred: np.ndarray, true: np.ndarray) -> np.ndarray:
         if lag >= 0:
             p, t = pred[lag:], true[: len(true) - lag]
         else:
-            p, t = pred[: lag], true[-lag:]
+            p, t = pred[:lag], true[-lag:]
         out.append(float(pearson_r(p, t)[list(SCORED_FINGERS)].mean()))
     return np.asarray(out)
 
@@ -111,39 +124,55 @@ def main() -> None:
             cross = np.array([[float(pearson_r(pred[:, i], true[:, j])[0]) for j in range(5)] for i in range(5)])
             env, within = movement_split(pred, true)
             profile = lag_profile(pred, true)
-            entry["approaches"][k] = {"score": float(r_from_sums(sums[k][-1].sum(0))[list(SCORED_FINGERS)].mean()),
-                                      "cross_finger_r": cross.round(4).tolist(),
-                                      "best_lag_ms": int(LAGS_MS[np.argmax(profile)]),
-                                      "r_at_best_lag": float(profile.max()), "envelope_r": env,
-                                      "within_movement_r": within}
+            entry["approaches"][k] = {
+                "score": float(r_from_sums(sums[k][-1].sum(0))[list(SCORED_FINGERS)].mean()),
+                "cross_finger_r": cross.round(4).tolist(),
+                "best_lag_ms": int(LAGS_MS[np.argmax(profile)]),
+                "r_at_best_lag": float(profile.max()),
+                "envelope_r": env,
+                "within_movement_r": within,
+            }
         prep = prepare(data)
         x_std = Standardiser().fit(prep.x[prep.train_rows]).transform(prep.x)  # the final models' statistics
         masked = mask_artefact_channels(x_std, prep.cfg.n_per_channel, prep.cfg.artefact_z)[1][prep.test_rows]
-        entry["masking"] = {"fraction_of_electrode_steps": float(masked.mean()),
-                            "fraction_of_steps_with_any": float(masked.any(axis=1).mean()),
-                            "electrodes_ever_masked": int(masked.any(axis=0).sum())}
+        entry["masking"] = {
+            "fraction_of_electrode_steps": float(masked.mean()),
+            "fraction_of_steps_with_any": float(masked.any(axis=1).mean()),
+            "electrodes_ever_masked": int(masked.any(axis=0).sum()),
+        }
         report["subjects"][str(s)] = entry
         print(f"S{s}: masking {entry['masking']}", flush=True)
 
     # paired block bootstrap of the three-patient mean score
     boot = {}
     for k in keys:
-        per_subject = [r_from_sums(np.einsum("bn,nsf->bsf", c, sm))[:, list(SCORED_FINGERS)].mean(1)
-                       for c, sm in zip(counts, sums[k])]
+        per_subject = [
+            r_from_sums(np.einsum("bn,nsf->bsf", c, sm))[:, list(SCORED_FINGERS)].mean(1)
+            for c, sm in zip(counts, sums[k])
+        ]
         boot[k] = np.mean(per_subject, axis=0)  # (N_BOOT,)
     point = {k: float(np.mean([report["subjects"][str(s)]["approaches"][k]["score"] for s in SUBJECTS])) for k in keys}
-    report["bootstrap"] = {k: {"score": point[k], "ci95": np.percentile(boot[k], [2.5, 97.5]).round(4).tolist()}
-                           for k in keys}
+    report["bootstrap"] = {
+        k: {"score": point[k], "ci95": np.percentile(boot[k], [2.5, 97.5]).round(4).tolist()} for k in keys
+    }
     report["paired_differences"] = []
     for a, b in PAIRS:
         if a in boot and b in boot:
             d = boot[a] - boot[b]
-            report["paired_differences"].append({"a": a, "b": b, "difference": point[a] - point[b],
-                                                 "ci95": np.percentile(d, [2.5, 97.5]).round(4).tolist(),
-                                                 "p_not_greater": float((d <= 0).mean())})
+            report["paired_differences"].append(
+                {
+                    "a": a,
+                    "b": b,
+                    "difference": point[a] - point[b],
+                    "ci95": np.percentile(d, [2.5, 97.5]).round(4).tolist(),
+                    "p_not_greater": float((d <= 0).mean()),
+                }
+            )
     for row in report["paired_differences"]:
-        print(f"{row['a']:>16} - {row['b']:<16} {row['difference']:+.3f}  95% CI [{row['ci95'][0]:+.3f}, "
-              f"{row['ci95'][1]:+.3f}]")
+        print(
+            f"{row['a']:>16} - {row['b']:<16} {row['difference']:+.3f}  95% CI [{row['ci95'][0]:+.3f}, "
+            f"{row['ci95'][1]:+.3f}]"
+        )
     Path(args.out).write_text(json.dumps(report, indent=2))
 
 

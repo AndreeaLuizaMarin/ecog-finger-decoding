@@ -8,6 +8,7 @@ with the choice made here.
 * Liang and Bougrain (2012), Front. Neurosci. 6:91 - competition winner, r = 0.46.
 * Flamary and Rakotomamonjy (2012), Front. Neurosci. 6:29 - second place, r = 0.42.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -20,6 +21,7 @@ from .models.linear import lag_matrix
 def r1d(a: np.ndarray, b: np.ndarray) -> float:
     """Pearson r of two 1-D series (0 for a constant series)."""
     return float(pearson_r(a, b)[0])
+
 
 GLOVE_STEP = 40  # samples: the data glove ran at 25 Hz, the ECoG at 1 kHz
 
@@ -67,8 +69,9 @@ class LiangBougrainOffline:
     BANDS = ((1.0, 60.0), (60.0, 100.0), (100.0, 200.0))
     TAPS = (3301, 1001, 1001)
 
-    def __init__(self, n_lags: int = 25, max_pairs: int = 10, split: float = 0.6, causal: bool = False,
-                 intercept: bool = False):
+    def __init__(
+        self, n_lags: int = 25, max_pairs: int = 10, split: float = 0.6, causal: bool = False, intercept: bool = False
+    ):
         self.n_lags, self.max_pairs, self.split = n_lags, max_pairs, split
         self.causal, self.intercept = causal, intercept
 
@@ -104,7 +107,7 @@ class LiangBougrainOffline:
             cols.append(np.ones((len(am), 1)))
         return np.hstack(cols)
 
-    def select(self, am: np.ndarray, y: np.ndarray, rows: slice) -> "LiangBougrainOffline":
+    def select(self, am: np.ndarray, y: np.ndarray, rows: slice) -> LiangBougrainOffline:
         """Greedy forward selection per finger on a chronological 3/5 - 2/5 split of ``rows``."""
         n, n_pairs = rows.stop - rows.start, am.shape[1]
         cut = int(self.split * n)
@@ -138,7 +141,7 @@ class LiangBougrainOffline:
             self.selection_curves_.append(curve)
         return self
 
-    def fit(self, am: np.ndarray, y: np.ndarray, rows: slice) -> "LiangBougrainOffline":
+    def fit(self, am: np.ndarray, y: np.ndarray, rows: slice) -> LiangBougrainOffline:
         self.coef_ = []
         for f, pairs in enumerate(self.pairs_):
             a = self._design(am, pairs)[rows]
@@ -149,8 +152,9 @@ class LiangBougrainOffline:
         return np.stack([self._design(am, pairs) @ w for pairs, w in zip(self.pairs_, self.coef_)], axis=1)
 
 
-def run_liang_offline(train_ecog, train_flex, test_ecog, causal: bool = False, intercept: bool = False,
-                      exclude: tuple[int, ...] = ()) -> dict:
+def run_liang_offline(
+    train_ecog, train_flex, test_ecog, causal: bool = False, intercept: bool = False, exclude: tuple[int, ...] = ()
+) -> dict:
     """Train on the competition training data, predict the test data at 1 kHz."""
     ecog = np.vstack([train_ecog, test_ecog])
     if exclude:
@@ -166,8 +170,12 @@ def run_liang_offline(train_ecog, train_flex, test_ecog, causal: bool = False, i
     pred = model.predict(am)
     test_t = t[n_train:] - len(train_flex)
     up = upsample_hold if causal else upsample_linear
-    return {"pred_1khz": up(pred[n_train:], test_t, len(test_ecog)), "pairs": model.pairs_,
-            "selection_curves": model.selection_curves_, "n_channels": ecog.shape[1]}
+    return {
+        "pred_1khz": up(pred[n_train:], test_t, len(test_ecog)),
+        "pairs": model.pairs_,
+        "selection_curves": model.selection_curves_,
+        "n_channels": ecog.shape[1],
+    }
 
 
 # --------------------------------------------------------------------------- 2nd place
@@ -176,7 +184,7 @@ def _ar_first_two(x: np.ndarray, order: int = 10) -> np.ndarray:
     out = np.empty((2, x.shape[1]))
     for c in range(x.shape[1]):
         s = x[:, c] - x[:, c].mean()
-        lagged = np.stack([s[order - k - 1: len(s) - k - 1] for k in range(order)], axis=1)
+        lagged = np.stack([s[order - k - 1 : len(s) - k - 1] for k in range(order)], axis=1)
         coef = np.linalg.lstsq(lagged, s[order:], rcond=None)[0]
         out[:, c] = coef[:2]
     return out
@@ -187,7 +195,7 @@ def ar_features(ecog: np.ndarray, window: int = 300, order: int = 10, step: int 
     spline through the window centres and read every ``step`` samples. Returns (n // step, channels, 2)."""
     n, n_ch = ecog.shape
     n_win = n // window
-    coefs = np.stack([_ar_first_two(ecog[i * window:(i + 1) * window], order) for i in range(n_win)])
+    coefs = np.stack([_ar_first_two(ecog[i * window : (i + 1) * window], order) for i in range(n_win)])
     centres = np.arange(n_win) * window + (window - 1) / 2
     grid = np.arange(0, n, step)
     spline = interpolate.CubicSpline(centres, coefs, axis=0, extrapolate=True)  # uses the next window too
@@ -224,8 +232,9 @@ def group_lasso_least_squares(x: np.ndarray, y: np.ndarray, lam: float, n_iter: 
     return c
 
 
-def flamary_states(flex_250: np.ndarray, rows: slice, threshold: float = 0.2, fill_gaps: bool = False,
-                   max_gap: int = 200) -> np.ndarray:
+def flamary_states(
+    flex_250: np.ndarray, rows: slice, threshold: float = 0.2, fill_gaps: bool = False, max_gap: int = 200
+) -> np.ndarray:
     """0 = rest, k = 1..5 = finger k moving: the most flexed finger above ``threshold`` of its training range.
 
     ``fill_gaps``: rest gaps shorter than ``max_gap`` samples (0.8 s at 250 Hz) between two stretches of the same
@@ -240,7 +249,7 @@ def flamary_states(flex_250: np.ndarray, rows: slice, threshold: float = 0.2, fi
         moving = np.flatnonzero(state > 0)
         for i, j in zip(moving[:-1], moving[1:]):
             if 1 < j - i <= max_gap and state[i] == state[j]:
-                state[i + 1:j] = state[i]
+                state[i + 1 : j] = state[i]
     return state
 
 
@@ -320,8 +329,10 @@ def run_flamary_offline(train_ecog, train_flex, test_ecog, log=print, exclude: t
 
     # ---- state classifier features: first two AR(10) coefficients, two readings of "300-sample windows"
     ar_sets = {}
-    for win_label, ecog_in, win, st in (("300 samples at 1 kHz", ecog, 300, step),
-                                       ("300 samples at 250 Hz", ecog[::step], 300, 1)):
+    for win_label, ecog_in, win, st in (
+        ("300 samples at 1 kHz", ecog, 300, step),
+        ("300 samples at 250 Hz", ecog[::step], 300, 1),
+    ):
         ar = ar_features(ecog_in, window=win, step=st)[: len(sg)]
         ar_sets[win_label] = (ar - ar[:n_tr].mean(0)) / (ar[:n_tr].std(0) + 1e-12)
 
@@ -358,9 +369,18 @@ def run_flamary_offline(train_ecog, train_flex, test_ecog, log=print, exclude: t
                         est = np.argmax(xd[val] @ c, axis=1)
                         r = corr(switch(xf[val], models_fit, est), yz[val])  # K etc. chosen on this, as in the paper
                         if best is None or r > best["val_r"]:
-                            best = {"labels": label_kind, "ar_window": win_label, "ts_ms": ts_ms, "k": int(k_ch),
-                                    "lambda_s": lam, "val_r": r, "state_acc": float(np.mean(est == states[val])),
-                                    **best_reg, "ranking": ranking, "states": states}
+                            best = {
+                                "labels": label_kind,
+                                "ar_window": win_label,
+                                "ts_ms": ts_ms,
+                                "k": int(k_ch),
+                                "lambda_s": lam,
+                                "val_r": r,
+                                "state_acc": float(np.mean(est == states[val])),
+                                **best_reg,
+                                "ranking": ranking,
+                                "states": states,
+                            }
     log("  chosen: " + str({k: v for k, v in best.items() if k not in ("ranking", "states")}))
 
     # ---- final: refit both blocks on the whole training segment, decode the test segment
@@ -374,13 +394,23 @@ def run_flamary_offline(train_ecog, train_flex, test_ecog, log=print, exclude: t
     pred = switch(xf, models, est_states) * y_std + y_mean
     test_t = np.arange(len(pred) - n_tr) * step
     chosen = {k: v for k, v in best.items() if k not in ("ranking", "states")}
-    return {"pred_1khz": upsample_linear(pred[n_tr:], test_t, len(test_ecog)),
-            "states_test_250hz": est_states[n_tr:], "chosen": chosen}
+    return {
+        "pred_1khz": upsample_linear(pred[n_tr:], test_t, len(test_ecog)),
+        "states_test_250hz": est_states[n_tr:],
+        "chosen": chosen,
+    }
 
 
 # --------------------------------------------------------------------------- FingerFlex (Lomtev et al., 2023)
-def run_fingerflex_offline(train_ecog: np.ndarray, train_flex: np.ndarray, test_ecog: np.ndarray,
-                           test_flex: np.ndarray, seed: int = 0, cfg=None, log=print) -> dict:
+def run_fingerflex_offline(
+    train_ecog: np.ndarray,
+    train_flex: np.ndarray,
+    test_ecog: np.ndarray,
+    test_flex: np.ndarray,
+    seed: int = 0,
+    cfg=None,
+    log=print,
+) -> dict:
     """FingerFlex as published (``fingerflex.py``, offline form), trained twice from the same initial weights.
 
     Run A, the published procedure: all training data, the test recording decoded after every epoch, and the epoch
@@ -405,12 +435,16 @@ def run_fingerflex_offline(train_ecog: np.ndarray, train_flex: np.ndarray, test_
     y_tr, y_te = ff.glove_100hz(train_flex), ff.glove_100hz(test_flex)
     n = min(len(x_tr_raw), len(y_tr))
     split = int(0.8 * n)
-    yt = y_te[s:len(x_te_raw)]  # fingers 200 ms after each test input
+    yt = y_te[s : len(x_te_raw)]  # fingers 200 ms after each test input
 
     def scaled(rows: slice):
         sc = ff.RobustScaler().fit(x_tr_raw[rows])
         lo, hi = y_tr[rows].min(0), y_tr[rows].max(0)
-        return sc.transform(x_tr_raw[: n - s]), sc.transform(x_te_raw[: len(x_te_raw) - s]), (y_tr[s:n] - lo) / (hi - lo)
+        return (
+            sc.transform(x_tr_raw[: n - s]),
+            sc.transform(x_te_raw[: len(x_te_raw) - s]),
+            (y_tr[s:n] - lo) / (hi - lo),
+        )
 
     def smooth(out: np.ndarray, sigma: float) -> np.ndarray:
         return gaussian_filter1d(out, sigma, axis=0)
@@ -450,6 +484,9 @@ def run_fingerflex_offline(train_ecog: np.ndarray, train_flex: np.ndarray, test_
 
     e_test = int(np.argmax([h["test_monitor"] for h in hist_a]))
     e_val = int(np.argmax([h["val"] for h in hist_b]))
-    return {"published": {"epoch": e_test + 1, **scores(outs[e_test])},
-            "validation_epoch": {"epoch": e_val + 1, **scores(outs[e_val])},
-            "history_b_val": [h["val"] for h in hist_b], "history_a_test": [h["test_monitor"] for h in hist_a]}
+    return {
+        "published": {"epoch": e_test + 1, **scores(outs[e_test])},
+        "validation_epoch": {"epoch": e_val + 1, **scores(outs[e_val])},
+        "history_b_val": [h["val"] for h in hist_b],
+        "history_a_test": [h["test_monitor"] for h in hist_a],
+    }

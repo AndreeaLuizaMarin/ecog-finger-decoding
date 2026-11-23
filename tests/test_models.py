@@ -2,10 +2,28 @@ import numpy as np
 import pytest
 import torch
 
-from ecogdecode.models import (KalmanDecoder, LaggedRidge, LiangBougrainDecoder, LSTMDecoder, LSTMStep, MambaDecoder,
-                               ODEDecoder, POSSMDecoder, POSSMStep, S4DDecoder, S4DLayer, S4DStep, StateGatedDecoder,
-                               StateGatedStep, TCNDecoder, TransientGatedDecoder, build_manifold_gated, finger_states,
-                               lag_matrix, selective_scan)
+from ecogdecode.models import (
+    KalmanDecoder,
+    LaggedRidge,
+    LiangBougrainDecoder,
+    LSTMDecoder,
+    LSTMStep,
+    MambaDecoder,
+    ODEDecoder,
+    POSSMDecoder,
+    POSSMStep,
+    S4DDecoder,
+    S4DLayer,
+    S4DStep,
+    StateGatedDecoder,
+    StateGatedStep,
+    TCNDecoder,
+    TransientGatedDecoder,
+    build_manifold_gated,
+    finger_states,
+    lag_matrix,
+    selective_scan,
+)
 
 
 def test_lag_matrix():
@@ -52,19 +70,29 @@ def test_finger_states():
 
 
 def _transient(n_features):
-    return TransientGatedDecoder.from_training_data(np.random.default_rng(0).standard_normal((200, n_features)),
-                                                    6, k=4)
+    return TransientGatedDecoder.from_training_data(np.random.default_rng(0).standard_normal((200, n_features)), 6, k=4)
 
 
 def _manifold(kind, backbone="leaky"):
     rng = np.random.default_rng(0)
-    return lambda n: build_manifold_gated(kind, rng.standard_normal((300, n)), rng.standard_normal((300, 5)),
-                                          dim=4, backbone=backbone)
+    return lambda n: build_manifold_gated(
+        kind, rng.standard_normal((300, n)), rng.standard_normal((300, 5)), dim=4, backbone=backbone
+    )
 
 
-NETS = [LSTMDecoder, S4DDecoder, MambaDecoder, ODEDecoder, TCNDecoder, lambda n: StateGatedDecoder(n, 6), _transient,
-        lambda n: POSSMDecoder(n, 6),
-        _manifold("pca"), _manifold("pca", "lstm"), _manifold("contrastive")]
+NETS = [
+    LSTMDecoder,
+    S4DDecoder,
+    MambaDecoder,
+    ODEDecoder,
+    TCNDecoder,
+    lambda n: StateGatedDecoder(n, 6),
+    _transient,
+    lambda n: POSSMDecoder(n, 6),
+    _manifold("pca"),
+    _manifold("pca", "lstm"),
+    _manifold("contrastive"),
+]
 
 
 @pytest.mark.parametrize("build", NETS)
@@ -104,8 +132,12 @@ def test_s4d_convolution_equals_recurrence():
 @pytest.mark.parametrize("kind", ["lstm", "s4d", "gated", "possm"])
 def test_streaming_step_matches_full_sequence(kind):
     torch.manual_seed(0)
-    model = {"lstm": LSTMDecoder(12), "s4d": S4DDecoder(12), "gated": StateGatedDecoder(12, 6),
-             "possm": POSSMDecoder(12, 6)}[kind].eval()
+    model = {
+        "lstm": LSTMDecoder(12),
+        "s4d": S4DDecoder(12),
+        "gated": StateGatedDecoder(12, 6),
+        "possm": POSSMDecoder(12, 6),
+    }[kind].eval()
     step = {"lstm": LSTMStep, "s4d": S4DStep, "gated": StateGatedStep, "possm": POSSMStep}[kind](model)
     x = torch.randn(1, 50, 12)
     with torch.no_grad():

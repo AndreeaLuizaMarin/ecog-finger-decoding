@@ -1,4 +1,5 @@
 """End-to-end checks on synthetic data: loading, the split, every approach, live replay."""
+
 import dataclasses
 
 import numpy as np
@@ -15,8 +16,9 @@ FAST = TrainConfig(seq_len=64, burn_in=16, windows_per_epoch=32, max_epochs=3, p
 
 def test_load_subject_from_mat(tmp_path, synthetic_subject):
     s = synthetic_subject
-    scipy.io.savemat(tmp_path / "sub1_comp.mat", {"train_data": s.train_ecog, "train_dg": s.train_flex,
-                                                   "test_data": s.test_ecog})
+    scipy.io.savemat(
+        tmp_path / "sub1_comp.mat", {"train_data": s.train_ecog, "train_dg": s.train_flex, "test_data": s.test_ecog}
+    )
     scipy.io.savemat(tmp_path / "sub1_testlabels.mat", {"test_dg": s.test_flex})
     loaded = load_subject(tmp_path, 1)
     np.testing.assert_array_equal(loaded.test_flex, s.test_flex)
@@ -31,7 +33,10 @@ def test_split_is_chronological(synthetic_subject):
 
 def test_registry_is_complete():
     for key, a in APPROACHES.items():
-        assert key in (CLOSED_FORM if a.trainer == "closed_form" else NETWORKS) or a.trainer in ("pretrained", "fingerflex")
+        assert key in (CLOSED_FORM if a.trainer == "closed_form" else NETWORKS) or a.trainer in (
+            "pretrained",
+            "fingerflex",
+        )
 
 
 @pytest.fixture(scope="module")
@@ -43,10 +48,10 @@ def test_electrode_selection_sees_only_the_given_rows(prepared):
     rows, npc = prepared.fit_rows, prepared.cfg.n_per_channel
     chosen = top_electrodes(prepared, rows, 3)
     changed = dataclasses.replace(prepared, x=prepared.x.copy())
-    changed.x[rows.stop:] = np.random.default_rng(0).standard_normal(changed.x[rows.stop:].shape)
+    changed.x[rows.stop :] = np.random.default_rng(0).standard_normal(changed.x[rows.stop :].shape)
     np.testing.assert_array_equal(top_electrodes(changed, rows, 3), chosen)
     kept = keep_electrodes(prepared, chosen)
-    np.testing.assert_array_equal(kept.x[:, :npc], prepared.x[:, chosen[0] * npc:(chosen[0] + 1) * npc])
+    np.testing.assert_array_equal(kept.x[:, :npc], prepared.x[:, chosen[0] * npc : (chosen[0] + 1) * npc])
     assert kept.x.shape[1] == 3 * npc
 
 
@@ -76,8 +81,13 @@ def test_live_replay_matches_offline(key, synthetic_subject, tmp_path):
     from ecogdecode.data import SubjectData
     from ecogdecode.streaming import replay_online
 
-    short = SubjectData(0, synthetic_subject.train_ecog[:12_000], synthetic_subject.train_flex[:12_000],
-                        synthetic_subject.test_ecog[:4_000], synthetic_subject.test_flex[:4_000])
+    short = SubjectData(
+        0,
+        synthetic_subject.train_ecog[:12_000],
+        synthetic_subject.train_flex[:12_000],
+        synthetic_subject.test_ecog[:4_000],
+        synthetic_subject.test_flex[:4_000],
+    )
     prep = prepare(short)
     res = run_network(prep, key, seed=0, train_cfg=FAST)
     check = replay_online(res.model, res.x, res.x_scaler, short.ecog, prep.cfg, tmp_path / f"{key}.onnx")

@@ -12,6 +12,7 @@ and seed, chosen settings) and results/preds/<key>_subX.npy (test predictions of
 fixed in advance, starting with the last training step so the causal hold at 1 kHz is exact).
 Approaches can run in parallel processes.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,8 +54,12 @@ def main() -> None:
     ap.add_argument("--no-refit", action="store_true", help="keep the early-stopped models (no final retraining)")
     ap.add_argument("--streaming", action="store_true", help="export seed 0 to ONNX and replay the recording live")
     ap.add_argument("--threads", type=int, default=1)
-    ap.add_argument("--tag", default="", help="write runs/parts/<key>__<tag>.json, one part of a run split over processes "
-                    "(scripts/merge_runs.py joins the parts)")
+    ap.add_argument(
+        "--tag",
+        default="",
+        help="write runs/parts/<key>__<tag>.json, one part of a run split over processes "
+        "(scripts/merge_runs.py joins the parts)",
+    )
     args = ap.parse_args()
 
     torch.set_num_threads(args.threads)
@@ -65,27 +70,41 @@ def main() -> None:
 
     datas = {s: load_subject(args.data_dir, s) for s in args.subjects}
     preps = {s: prepare(d, FeatureConfig(), protocol) for s, d in datas.items()}
-    record_test_look("blind test (run_benchmark.py)", {"approaches": args.approaches, "subjects": args.subjects,
-                                                       "seeds": args.seeds})
+    record_test_look(
+        "blind test (run_benchmark.py)", {"approaches": args.approaches, "subjects": args.subjects, "seeds": args.seeds}
+    )
     for s, p in preps.items():
-        np.save(out / "preds" / f"truth_sub{s}.npy",
-                datas[s].test_flex[p.ends[p.test_rows] - p.n_train_samples].astype(np.float32))
+        np.save(
+            out / "preds" / f"truth_sub{s}.npy",
+            datas[s].test_flex[p.ends[p.test_rows] - p.n_train_samples].astype(np.float32),
+        )
         np.save(out / "preds" / f"times_sub{s}.npy", p.test_times)
 
     for key in args.approaches:
         approach, t0 = APPROACHES[key], time.time()
         results = run(key, preps, datas, protocol)
-        report = {"key": key, "number": approach.number, "label": approach.label, "family": approach.family,
-                  "protocol": asdict(protocol), "train_config": asdict(approach.train_cfg),
-                  "environment": environment(args.threads), "subjects": {}}
+        report = {
+            "key": key,
+            "number": approach.number,
+            "label": approach.label,
+            "family": approach.family,
+            "protocol": asdict(protocol),
+            "train_config": asdict(approach.train_cfg),
+            "environment": environment(args.threads),
+            "subjects": {},
+        }
         for s, runs in results.items():
             prep, test_flex = preps[s], datas[s].test_flex
-            per_run = [{"val_score": r.val_score, "selected": r.selected, **evaluate(prep, r.pred, test_flex)}
-                       for r in runs]
-            entry = {"val_score": float(np.mean([r.val_score for r in runs])),
-                     "score": float(np.mean([p["score"] for p in per_run])),  # mean over single models
-                     "sd": float(np.std([p["score"] for p in per_run])),
-                     "r": np.mean([p["r"] for p in per_run], axis=0).tolist(), "runs": per_run}
+            per_run = [
+                {"val_score": r.val_score, "selected": r.selected, **evaluate(prep, r.pred, test_flex)} for r in runs
+            ]
+            entry = {
+                "val_score": float(np.mean([r.val_score for r in runs])),
+                "score": float(np.mean([p["score"] for p in per_run])),  # mean over single models
+                "sd": float(np.std([p["score"] for p in per_run])),
+                "r": np.mean([p["r"] for p in per_run], axis=0).tolist(),
+                "runs": per_run,
+            }
             seed0 = [r for r in runs if r.selected.get("seed", 0) == 0]  # figures use the seed-0 model
             if seed0:
                 np.save(out / "preds" / f"{key}_sub{s}.npy", prep.test_predictions(seed0[0].pred).astype(np.float32))
@@ -94,8 +113,14 @@ def main() -> None:
                     gates = runs[0].model.eval().gates(torch.from_numpy(runs[0].x)[None])[0].numpy()
                 np.save(out / "gates" / f"{key}_sub{s}.npy", gates[prep.test_rows])
             if args.streaming and approach.streamable:
-                entry["streaming"] = replay_online(runs[0].model, runs[0].x, runs[0].x_scaler, datas[s].ecog,
-                                                   prep.cfg, out / "onnx" / f"{key}_sub{s}.onnx")
+                entry["streaming"] = replay_online(
+                    runs[0].model,
+                    runs[0].x,
+                    runs[0].x_scaler,
+                    datas[s].ecog,
+                    prep.cfg,
+                    out / "onnx" / f"{key}_sub{s}.onnx",
+                )
             report["subjects"][str(s)] = entry
         report["val_score"] = float(np.mean([e["val_score"] for e in report["subjects"].values()]))
         report["score"] = float(np.mean([e["score"] for e in report["subjects"].values()]))
@@ -106,8 +131,11 @@ def main() -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(report, indent=2, default=to_json))
         per_subject = "  ".join(f"S{s} {e['score']:.3f}" for s, e in report["subjects"].items())
-        print(f"{key:<18} val {report['val_score']:.3f}   test {report['score']:.3f} ± {report['sd']:.3f}   ({per_subject})   "
-              f"{report['seconds']} s", flush=True)
+        print(
+            f"{key:<18} val {report['val_score']:.3f}   test {report['score']:.3f} ± {report['sd']:.3f}   "
+            f"({per_subject})   {report['seconds']} s",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

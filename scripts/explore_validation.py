@@ -8,6 +8,7 @@ output smoothing chosen on that same block.
 Usage:
     python scripts/explore_validation.py --data-dir data --out results/validation_study.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,9 +21,9 @@ import numpy as np
 import torch
 
 from ecogdecode.approaches import run_network, run_pretrained
-from ecogdecode.models import LSTMDecoder
 from ecogdecode.config import FINE_HG_FEATURES, FeatureConfig, Protocol, TrainConfig
 from ecogdecode.data import SUBJECTS, load_subject
+from ecogdecode.models import LSTMDecoder
 from ecogdecode.pipeline import keep_electrodes, prepare, top_electrodes
 
 FEATURES = {"base": FeatureConfig(), "fine_hg": FINE_HG_FEATURES, "win200": replace(FeatureConfig(), window_ms=200)}
@@ -50,8 +51,18 @@ CONFIGS = {  # name: (approach, feature set, training options); "adaptive_norm_s
     "h256_drop04_aug": ("lstm", "base", {"hidden": 256, "dropout": 0.4, "gain_jitter": 0.3, "feature_noise": 0.3}),
     "h256_drop04_adapt180": ("lstm", "base", {"hidden": 256, "dropout": 0.4, "adaptive_norm_s": 180.0}),
     "h256_drop04_win200": ("lstm", "win200", {"hidden": 256, "dropout": 0.4}),
-    "h256_drop04_aug_cos40": ("lstm", "base", {"hidden": 256, "dropout": 0.4, "gain_jitter": 0.3, "feature_noise": 0.3,
-                                               "schedule": "cosine", "max_epochs": 40}),
+    "h256_drop04_aug_cos40": (
+        "lstm",
+        "base",
+        {
+            "hidden": 256,
+            "dropout": 0.4,
+            "gain_jitter": 0.3,
+            "feature_noise": 0.3,
+            "schedule": "cosine",
+            "max_epochs": 40,
+        },
+    ),
     "h128_drop04_aug": ("lstm", "base", {"hidden": 128, "dropout": 0.4, "gain_jitter": 0.3, "feature_noise": 0.3}),
     "h256_drop04_aug05": ("lstm", "base", {"hidden": 256, "dropout": 0.4, "gain_jitter": 0.5, "feature_noise": 0.5}),
     # round 5: training settings of the tuned LSTM (approach 5), one at a time
@@ -75,8 +86,7 @@ CONFIGS = {  # name: (approach, feature set, training options); "adaptive_norm_s
     "t_top16_cd": ("lstm", "base", {**TUNED, "top_electrodes": 16, "channel_dropout": 0.1}),
     "t_top32_cd": ("lstm", "base", {**TUNED, "top_electrodes": 32, "channel_dropout": 0.1}),
     "manifold_pca_lstm256_aug": ("manifold_pca", "base", {"gain_jitter": 0.3, "feature_noise": 0.3}),
-    "manifold_contrastive_lstm256_aug": ("manifold_contrastive", "base",
-                                         {"gain_jitter": 0.3, "feature_noise": 0.3}),
+    "manifold_contrastive_lstm256_aug": ("manifold_contrastive", "base", {"gain_jitter": 0.3, "feature_noise": 0.3}),
     "tcn": ("tcn", "base", {}),
     "pretrained_contrastive": ("pretrained_lstm", "base", {}),
     "pretrained_multipatient": ("multipatient_lstm", "base", {}),
@@ -153,7 +163,7 @@ DESCRIPTIONS = {
     "h256_drop04_aug_cos40": "LSTM 256/0.4 + augmentation, cosine schedule, 40 epochs, no early stopping",
     "manifold_pca_lstm256_aug": "Manifold-gated, PCA manifold, 128-unit LSTM, dropout 0.4 + augmentation",
     "manifold_contrastive_lstm256_aug": "Manifold-gated, CEBRA-style manifold, 128-unit LSTM, "
-                                        "dropout 0.4 + augmentation",
+    "dropout 0.4 + augmentation",
 }
 
 
@@ -207,8 +217,13 @@ def main() -> None:
         per_subject = {s: [] for s in datas}
         for seed in args.seeds:
             if key in ("pretrained_lstm", "multipatient_lstm"):
-                out = run_pretrained({s: preps[(s, feats)] for s in datas}, seed, proto, train_cfg=cfg,
-                                     supervised=key == "multipatient_lstm")
+                out = run_pretrained(
+                    {s: preps[(s, feats)] for s in datas},
+                    seed,
+                    proto,
+                    train_cfg=cfg,
+                    supervised=key == "multipatient_lstm",
+                )
                 for s, r in out.items():
                     per_subject[s].append(r)
             else:
@@ -216,26 +231,40 @@ def main() -> None:
                     prep = preps[(s, feats)]
                     if "top_electrodes" in opts:  # chosen on the fit rows only
                         prep = keep_electrodes(prep, top_electrodes(prep, prep.fit_rows, opts["top_electrodes"]))
-                    model = (CUSTOM[name](prep.x.shape[1]) if name in CUSTOM
-                             else LSTMDecoder(prep.x.shape[1], **arch) if arch else None)
-                    per_subject[s].append(run_network(prep, key, seed=seed, protocol=proto, model=model,
-                                                      train_cfg=cfg))
+                    model = (
+                        CUSTOM[name](prep.x.shape[1])
+                        if name in CUSTOM
+                        else LSTMDecoder(prep.x.shape[1], **arch)
+                        if arch
+                        else None
+                    )
+                    per_subject[s].append(run_network(prep, key, seed=seed, protocol=proto, model=model, train_cfg=cfg))
         for s, runs in per_subject.items():
-            rows[str(s)] = {"val_unsmoothed": float(np.mean([r.selected["val_score_unsmoothed"] for r in runs])),
-                            "val": float(np.mean([r.val_score for r in runs])),
-                            "val_per_seed": [r.val_score for r in runs],
-                            "smooth_ms": float(np.median([r.selected["smooth_ms"] for r in runs])),
-                            "epochs": [r.selected["epochs"] for r in runs]}
-        results[name] = {"seeds": args.seeds, "approach": key, "features": feats, "options": opts, "subjects": rows,
-                         "mean_val_unsmoothed": float(np.mean([r["val_unsmoothed"] for r in rows.values()])),
-                         "mean_val": float(np.mean([r["val"] for r in rows.values()])),
-                         "seconds": round(time.time() - t0, 1)}
+            rows[str(s)] = {
+                "val_unsmoothed": float(np.mean([r.selected["val_score_unsmoothed"] for r in runs])),
+                "val": float(np.mean([r.val_score for r in runs])),
+                "val_per_seed": [r.val_score for r in runs],
+                "smooth_ms": float(np.median([r.selected["smooth_ms"] for r in runs])),
+                "epochs": [r.selected["epochs"] for r in runs],
+            }
+        results[name] = {
+            "seeds": args.seeds,
+            "approach": key,
+            "features": feats,
+            "options": opts,
+            "subjects": rows,
+            "mean_val_unsmoothed": float(np.mean([r["val_unsmoothed"] for r in rows.values()])),
+            "mean_val": float(np.mean([r["val"] for r in rows.values()])),
+            "seconds": round(time.time() - t0, 1),
+        }
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(results, indent=2))
         r = results[name]
         per = "  ".join(f"S{s} {v['val']:.3f} ({v['smooth_ms']:.0f} ms)" for s, v in rows.items())
-        print(f"{name:<28} val {r['mean_val_unsmoothed']:.3f} -> smoothed {r['mean_val']:.3f}   {per}   "
-              f"{r['seconds']} s", flush=True)
+        print(
+            f"{name:<28} val {r['mean_val_unsmoothed']:.3f} -> smoothed {r['mean_val']:.3f}   {per}   {r['seconds']} s",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

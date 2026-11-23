@@ -9,6 +9,7 @@ Compares, on the validation block of each patient (test labels are never loaded)
 Usage:
     python scripts/kalman_study.py --data-dir data
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,10 +42,10 @@ def main() -> None:
         yv = sc.y[val]
         res = {}
         for k in (8, 16, 32, 64):
-            res[f"kalman_pca{k}"] = score(KalmanDecoder(k).fit(sc.x[fit], sc.y[fit]).predict(sc.x[:val.stop])[val], yv)
+            res[f"kalman_pca{k}"] = score(KalmanDecoder(k).fit(sc.x[fit], sc.y[fit]).predict(sc.x[: val.stop])[val], yv)
             for lags in (3, 5):
                 kf = LaggedKalmanDecoder(k, lags).fit(sc.x[fit], sc.y[fit])
-                res[f"kalman_pca{k}_lags{lags}"] = score(kf.predict(sc.x[:val.stop])[val], yv)
+                res[f"kalman_pca{k}_lags{lags}"] = score(kf.predict(sc.x[: val.stop])[val], yv)
         best, _, wiener_val = select_ridge(sc.x, sc.y, fit, val, (10, 15, 20, 25), np.logspace(2, 6.5, 10), score)
         res["wiener"] = best["val_score"]
         # DKF: the regressor's residual covariance comes from a chronological split inside the fit rows

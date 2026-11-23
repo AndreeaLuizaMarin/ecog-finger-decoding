@@ -8,6 +8,7 @@ z_t are the neural features projected onto their leading principal components, w
 keeps the observation covariance Q well conditioned. All matrices are fitted in closed
 form by least squares on the training data; decoding is a forward (causal) pass.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,7 +27,7 @@ class KalmanDecoder:
     def _project(self, x: np.ndarray) -> np.ndarray:
         return (x - self.x_mean_) @ self.components_.T
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "KalmanDecoder":
+    def fit(self, x: np.ndarray, y: np.ndarray) -> KalmanDecoder:
         """Fit on a contiguous training block of features ``x`` (n, f) and positions ``y`` (n, k)."""
         x, y = x.astype(np.float64), y.astype(np.float64)
         self.n_outputs_ = y.shape[1]
@@ -82,10 +83,11 @@ class LaggedKalmanDecoder(KalmanDecoder):
 
     def _stack(self, x: np.ndarray) -> np.ndarray:
         from .linear import lag_matrix
+
         return lag_matrix(x, self.n_lags)
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "LaggedKalmanDecoder":
-        return super().fit(self._stack(x)[self.n_lags:], y[self.n_lags:])
+    def fit(self, x: np.ndarray, y: np.ndarray) -> LaggedKalmanDecoder:
+        return super().fit(self._stack(x)[self.n_lags :], y[self.n_lags :])
 
     def predict(self, x_seq: np.ndarray) -> np.ndarray:
         return super().predict(self._stack(x_seq))
@@ -113,7 +115,7 @@ class DiscriminativeKalmanDecoder:
         self.regressor = regressor
         self.Q_ = residual_cov
 
-    def fit(self, y: np.ndarray) -> "DiscriminativeKalmanDecoder":
+    def fit(self, y: np.ndarray) -> DiscriminativeKalmanDecoder:
         """Fit dynamics and the stationary prior on training positions ``y`` (n, k)."""
         y = y.astype(np.float64)
         k = y.shape[1]

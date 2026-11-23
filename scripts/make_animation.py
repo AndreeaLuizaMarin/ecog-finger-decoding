@@ -13,6 +13,7 @@ Usage:
     python scripts/make_animation.py --data-dir data --still 70                              # one frame as PNG
 Writes results/figures/hand_live_subX.mp4 (1280x720, 25 fps = real time) and a GIF excerpt for the README.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,8 +30,29 @@ from matplotlib.lines import Line2D  # noqa: E402
 from ecogdecode.data import load_subject  # noqa: E402
 from ecogdecode.features import Standardiser  # noqa: E402
 from ecogdecode.handviz import (  # noqa: E402
-    BG, DEC, DEC_EDGE, DEC_HI, DEC_TRACE, HAND_YLIM, MUTED, PANEL, REC, REC_EDGE, REC_HI, REC_TRACE, SCORED, STEP_S,
-    TEXT, HandArtist, display_flexion, fade_bottom, hand_axes, progress_bar, set_traces, trace_panel)
+    BG,
+    DEC,
+    DEC_EDGE,
+    DEC_HI,
+    DEC_TRACE,
+    HAND_YLIM,
+    MUTED,
+    PANEL,
+    REC,
+    REC_EDGE,
+    REC_HI,
+    REC_TRACE,
+    SCORED,
+    STEP_S,
+    TEXT,
+    HandArtist,
+    display_flexion,
+    fade_bottom,
+    hand_axes,
+    progress_bar,
+    set_traces,
+    trace_panel,
+)
 from ecogdecode.pipeline import prepare  # noqa: E402
 from ecogdecode.render import gif_excerpt, render_mp4  # noqa: E402
 
@@ -79,18 +101,30 @@ def main() -> None:
 
     def build():
         fig = plt.figure(figsize=(12.8, 7.2), dpi=100, facecolor=BG)
-        fig.text(0.035, 0.952, "Decoding finger movements from the human brain, live", fontsize=19,
-                 fontweight="bold")
-        fig.text(0.035, 0.914, f"Electrocorticography (ECoG)  ·  patient {s}  ·  whole blind test segment  ·  "
-                 f"{args.label}  ·  a new output every 40 ms from past signal only", fontsize=10.5, color=MUTED)
+        fig.text(0.035, 0.952, "Decoding finger movements from the human brain, live", fontsize=19, fontweight="bold")
+        fig.text(
+            0.035,
+            0.914,
+            f"Electrocorticography (ECoG)  ·  patient {s}  ·  whole blind test segment  ·  "
+            f"{args.label}  ·  a new output every 40 ms from past signal only",
+            fontsize=10.5,
+            color=MUTED,
+        )
         clock = fig.text(0.965, 0.952, "", ha="right", fontsize=15, color=TEXT)
         bar = progress_bar(fig, total_s)
 
         # brain activity raster: what the decoder reads
         ax_r = fig.add_axes([0.045, 0.43, 0.25, 0.36], facecolor=PANEL)
         win_r = 100  # 4 s
-        img = ax_r.imshow(np.zeros((hg.shape[1], win_r)), aspect="auto", cmap="magma", vmin=-0.8, vmax=2.2,
-                          extent=(-win_r * STEP_S, 0, hg.shape[1], 0), interpolation="nearest")
+        img = ax_r.imshow(
+            np.zeros((hg.shape[1], win_r)),
+            aspect="auto",
+            cmap="magma",
+            vmin=-0.8,
+            vmax=2.2,
+            extent=(-win_r * STEP_S, 0, hg.shape[1], 0),
+            interpolation="nearest",
+        )
         fig.text(0.045, 0.832, "Brain activity in", fontsize=12.5, color=TEXT, fontweight="bold")
         fig.text(0.045, 0.806, "high-gamma power, standardised", fontsize=9, color=MUTED)
         ax_r.set_xlabel("seconds before now", fontsize=9)
@@ -102,26 +136,29 @@ def main() -> None:
 
         hands = []
         for x0, title, sub, colors, ghost in (
-                (0.325, "Recorded movement", "data glove", (REC, REC_EDGE, REC_HI), False),
-                (0.655, "Decoded from the brain", f"{args.label}  ·  r = {r_dec:.2f}", (DEC, DEC_EDGE, DEC_HI),
-                 True)):
+            (0.325, "Recorded movement", "data glove", (REC, REC_EDGE, REC_HI), False),
+            (0.655, "Decoded from the brain", f"{args.label}  ·  r = {r_dec:.2f}", (DEC, DEC_EDGE, DEC_HI), True),
+        ):
             fig.text(x0 + 0.155, 0.832, title, ha="center", fontsize=12.5, color=TEXT, fontweight="bold")
             fig.text(x0 + 0.155, 0.806, sub, ha="center", fontsize=9, color=MUTED)
             ax = hand_axes(fig, [x0, 0.385, 0.31, 0.41])
             hands.append(HandArtist(ax, *colors, ghost=ghost))
             fade_bottom(ax, HAND_YLIM[0], -0.95)
 
-        legend = [Line2D([], [], color=REC_TRACE, lw=2, label="recorded"),
-                  Line2D([], [], color=DEC_TRACE, lw=2, label="decoded"),
-                  Line2D([], [], color="white", lw=1.2, label="white outline on the decoded hand = recorded pose"),
-                  Line2D([], [], color="none", label="raw output every 40 ms, no smoothing")]
-        _, tt, lines = trace_panel(fig, [0.085, 0.075, 0.88, 0.265], [(REC_TRACE, 1.5), (DEC_TRACE, 1.4)], legend,
-                                   win_steps=200)
+        legend = [
+            Line2D([], [], color=REC_TRACE, lw=2, label="recorded"),
+            Line2D([], [], color=DEC_TRACE, lw=2, label="decoded"),
+            Line2D([], [], color="white", lw=1.2, label="white outline on the decoded hand = recorded pose"),
+            Line2D([], [], color="none", label="raw output every 40 ms, no smoothing"),
+        ]
+        _, tt, lines = trace_panel(
+            fig, [0.085, 0.075, 0.88, 0.265], [(REC_TRACE, 1.5), (DEC_TRACE, 1.4)], legend, win_steps=200
+        )
 
         def update(i: int):
             t = a + i
             lo = test_start + t - win_r + 1
-            window = hg[max(lo, 0): test_start + t + 1]
+            window = hg[max(lo, 0) : test_start + t + 1]
             img.set_data(np.r_[np.full((win_r - len(window), hg.shape[1]), np.nan), window].T)
             hands[0].update(rec_n[t])
             hands[1].update(dec_n[t], ghost_flex=rec_n[t])

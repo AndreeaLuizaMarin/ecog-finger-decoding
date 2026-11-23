@@ -4,6 +4,7 @@ S4D: a diagonal complex state matrix with S4D-Lin initialisation and zero-order-
 discretisation, trained as an FFT convolution and run as a recurrence (``S4DStep``).
 Mamba: input-dependent step size and B, C matrices (a selective scan), minimal pure-PyTorch version.
 """
+
 from __future__ import annotations
 
 import math
@@ -68,8 +69,15 @@ class S4DBlock(nn.Module):
 
 
 class S4DDecoder(nn.Module):
-    def __init__(self, n_features: int, n_outputs: int = 5, d_model: int = 128, d_state: int = 64,
-                 n_layers: int = 2, dropout: float = 0.2):
+    def __init__(
+        self,
+        n_features: int,
+        n_outputs: int = 5,
+        d_model: int = 128,
+        d_state: int = 64,
+        n_layers: int = 2,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.inp = nn.Sequential(nn.Dropout(dropout), nn.Linear(n_features, d_model), nn.GELU())
         self.blocks = nn.ModuleList(S4DBlock(d_model, d_state, dropout) for _ in range(n_layers))
@@ -133,8 +141,15 @@ class MambaLayer(nn.Module):
     convolution precedes the scan and a SiLU gate follows it.
     """
 
-    def __init__(self, d_model: int, d_state: int = 16, d_conv: int = 4, expand: int = 2,
-                 dt_min: float = 1e-3, dt_max: float = 1e-1):
+    def __init__(
+        self,
+        d_model: int,
+        d_state: int = 16,
+        d_conv: int = 4,
+        expand: int = 2,
+        dt_min: float = 1e-3,
+        dt_max: float = 1e-1,
+    ):
         super().__init__()
         d_inner = expand * d_model
         self.dt_rank = max(1, math.ceil(d_model / 16))
@@ -172,8 +187,8 @@ def selective_scan(u, dt, A, B, C, chunk: int = 16):
     h = u.new_zeros(b, d, A.shape[1])
     ys = []
     for s in range(0, length, chunk):
-        dt_c, u_c = dt[:, s:s + chunk], u[:, s:s + chunk]
-        B_c, C_c = B[:, s:s + chunk], C[:, s:s + chunk]
+        dt_c, u_c = dt[:, s : s + chunk], u[:, s : s + chunk]
+        B_c, C_c = B[:, s : s + chunk], C[:, s : s + chunk]
         log_decay = torch.cumsum(dt_c[..., None] * A, dim=1)  # (b, l, d, n), <= 0
         drive = (dt_c * u_c)[..., None] * B_c[:, :, None, :]  # (b, l, d, n)
         # h_t = exp(L_t) h_0 + sum_{s<=t} exp(L_t - L_s) drive_s
@@ -187,8 +202,15 @@ def selective_scan(u, dt, A, B, C, chunk: int = 16):
 
 
 class MambaDecoder(nn.Module):
-    def __init__(self, n_features: int, n_outputs: int = 5, d_model: int = 48, d_state: int = 8,
-                 n_layers: int = 2, dropout: float = 0.2):
+    def __init__(
+        self,
+        n_features: int,
+        n_outputs: int = 5,
+        d_model: int = 48,
+        d_state: int = 8,
+        n_layers: int = 2,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.inp = nn.Sequential(nn.Dropout(dropout), nn.Linear(n_features, d_model), nn.GELU())
         self.norms = nn.ModuleList(nn.LayerNorm(d_model) for _ in range(n_layers))

@@ -14,6 +14,7 @@ Usage:
     python scripts/make_offline_animation.py --subject 3 --still 70      # one frame as PNG, for checking
 Writes results/figures/live_vs_offline_subX.mp4 (1280x720, real time) and a GIF excerpt for the README.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,13 +29,38 @@ import numpy as np  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
 from ecogdecode.handviz import (  # noqa: E402
-    BG, HAND_YLIM, LIVE, LIVE_EDGE, LIVE_HI, LIVE_TRACE, MUTED, OFF, OFF_EDGE, OFF_HI, OFF_TRACE, REC, REC_EDGE, REC_HI,
-    REC_TRACE, SCORED, STEP_S, TEXT, HandArtist, display_flexion, fade_bottom, hand_axes, progress_bar, set_traces,
-    trace_panel)
+    BG,
+    HAND_YLIM,
+    LIVE,
+    LIVE_EDGE,
+    LIVE_HI,
+    LIVE_TRACE,
+    MUTED,
+    OFF,
+    OFF_EDGE,
+    OFF_HI,
+    OFF_TRACE,
+    REC,
+    REC_EDGE,
+    REC_HI,
+    REC_TRACE,
+    SCORED,
+    STEP_S,
+    TEXT,
+    HandArtist,
+    display_flexion,
+    fade_bottom,
+    hand_axes,
+    progress_bar,
+    set_traces,
+    trace_panel,
+)
 from ecogdecode.render import gif_excerpt, render_mp4  # noqa: E402
 
-OFFLINE_LABELS = {"liang_offline": "2008 competition winner, as published",
-                  "flamary_offline": "2008 second place, as published"}
+OFFLINE_LABELS = {
+    "liang_offline": "2008 competition winner, as published",
+    "flamary_offline": "2008 second place, as published",
+}
 
 
 def main() -> None:
@@ -69,16 +95,28 @@ def main() -> None:
     def build():
         fig = plt.figure(figsize=(12.8, 7.2), dpi=100, facecolor=BG)
         fig.text(0.035, 0.952, "The same finger movements, decoded live and offline", fontsize=19, fontweight="bold")
-        fig.text(0.035, 0.914, f"Electrocorticography (ECoG)  ·  patient {s}  ·  whole blind test segment  ·  "
-                 "live = past signal only  ·  offline = may use signal after each moment", fontsize=10.5, color=MUTED)
+        fig.text(
+            0.035,
+            0.914,
+            f"Electrocorticography (ECoG)  ·  patient {s}  ·  whole blind test segment  ·  "
+            "live = past signal only  ·  offline = may use signal after each moment",
+            fontsize=10.5,
+            color=MUTED,
+        )
         clock = fig.text(0.965, 0.952, "", ha="right", fontsize=15, color=TEXT)
         bar = progress_bar(fig, total_s)
 
         hands = []
-        panels = (("Recorded movement", "data glove", (REC, REC_EDGE, REC_HI), False),
-                  ("Live decoder", f"one LSTM, approach 5b  ·  r = {r_live:.2f}", (LIVE, LIVE_EDGE, LIVE_HI), True),
-                  ("Offline decoder", f"{OFFLINE_LABELS.get(args.offline, args.offline)}  ·  r = {r_off:.2f}",
-                   (OFF, OFF_EDGE, OFF_HI), True))
+        panels = (
+            ("Recorded movement", "data glove", (REC, REC_EDGE, REC_HI), False),
+            ("Live decoder", f"one LSTM, approach 5b  ·  r = {r_live:.2f}", (LIVE, LIVE_EDGE, LIVE_HI), True),
+            (
+                "Offline decoder",
+                f"{OFFLINE_LABELS.get(args.offline, args.offline)}  ·  r = {r_off:.2f}",
+                (OFF, OFF_EDGE, OFF_HI),
+                True,
+            ),
+        )
         for i, (title, sub, colors, ghost) in enumerate(panels):
             cx = 0.02 + i * 0.325 + 0.155
             fig.text(cx, 0.832, title, ha="center", fontsize=12.5, color=TEXT, fontweight="bold")
@@ -87,13 +125,20 @@ def main() -> None:
             hands.append(HandArtist(ax, *colors, ghost=ghost))
             fade_bottom(ax, HAND_YLIM[0], -0.95)
 
-        legend = [Line2D([], [], color=REC_TRACE, lw=2, label="recorded"),
-                  Line2D([], [], color=LIVE_TRACE, lw=2, label="live"),
-                  Line2D([], [], color=OFF_TRACE, lw=2, label="offline"),
-                  Line2D([], [], color="white", lw=1.2, label="white outline on a decoded hand = recorded pose"),
-                  Line2D([], [], color="none", label="raw output every 40 ms, no smoothing")]
-        _, tt, lines = trace_panel(fig, [0.085, 0.075, 0.88, 0.265], [(REC_TRACE, 1.5), (OFF_TRACE, 1.3),
-                                                                      (LIVE_TRACE, 1.4)], legend, win_steps=200)
+        legend = [
+            Line2D([], [], color=REC_TRACE, lw=2, label="recorded"),
+            Line2D([], [], color=LIVE_TRACE, lw=2, label="live"),
+            Line2D([], [], color=OFF_TRACE, lw=2, label="offline"),
+            Line2D([], [], color="white", lw=1.2, label="white outline on a decoded hand = recorded pose"),
+            Line2D([], [], color="none", label="raw output every 40 ms, no smoothing"),
+        ]
+        _, tt, lines = trace_panel(
+            fig,
+            [0.085, 0.075, 0.88, 0.265],
+            [(REC_TRACE, 1.5), (OFF_TRACE, 1.3), (LIVE_TRACE, 1.4)],
+            legend,
+            win_steps=200,
+        )
 
         def update(i: int):
             t = a + i

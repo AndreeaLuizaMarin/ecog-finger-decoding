@@ -1,4 +1,5 @@
 """Training of the neural decoders: random windows, early stopping on the validation block."""
+
 from __future__ import annotations
 
 import copy
@@ -27,9 +28,17 @@ def correlation_loss(pred: torch.Tensor, true: torch.Tensor) -> torch.Tensor:
     return 1.0 - r.mean()
 
 
-def train_sequence_model(model: nn.Module, x: np.ndarray, y: np.ndarray, fit_rows: slice,
-                         val_rows: slice | None, score_fn, cfg: TrainConfig, epochs: int | None = None,
-                         n_per_channel: int | None = None) -> list[dict]:
+def train_sequence_model(
+    model: nn.Module,
+    x: np.ndarray,
+    y: np.ndarray,
+    fit_rows: slice,
+    val_rows: slice | None,
+    score_fn,
+    cfg: TrainConfig,
+    epochs: int | None = None,
+    n_per_channel: int | None = None,
+) -> list[dict]:
     """Train on random windows drawn from ``fit_rows``.
 
     With ``val_rows``: early stopping. After every epoch the model runs causally over the
@@ -55,8 +64,13 @@ def train_sequence_model(model: nn.Module, x: np.ndarray, y: np.ndarray, fit_row
     cosine = cfg.schedule == "cosine"
     n_epochs = cfg.max_epochs if (val_rows is not None or cosine) else epochs
     steps_per_epoch = -(-cfg.windows_per_epoch // cfg.batch_size)
-    sched = torch.optim.lr_scheduler.LambdaLR(
-        opt, lambda k: 0.5 * (1 + np.cos(np.pi * min(k / (n_epochs * steps_per_epoch), 1.0)))) if cosine else None
+    sched = (
+        torch.optim.lr_scheduler.LambdaLR(
+            opt, lambda k: 0.5 * (1 + np.cos(np.pi * min(k / (n_epochs * steps_per_epoch), 1.0)))
+        )
+        if cosine
+        else None
+    )
 
     ema = copy.deepcopy(model) if cfg.weight_ema > 0 else None
     evaluated = ema if ema is not None else model
@@ -68,13 +82,17 @@ def train_sequence_model(model: nn.Module, x: np.ndarray, y: np.ndarray, fit_row
         for b in range(0, len(starts), cfg.batch_size):
             if cfg.time_warp > 0:  # a window of another length, resampled to seq_len steps
                 factor = np.exp(rng.uniform(-np.log1p(cfg.time_warp), np.log1p(cfg.time_warp)))
-                idx = torch.from_numpy(starts[b:b + cfg.batch_size, None] + np.arange(round(cfg.seq_len * factor)))
-                xb, yb = (F.interpolate(t[idx].transpose(1, 2), size=cfg.seq_len, mode="linear",
-                                        align_corners=True).transpose(1, 2) for t in (xt, yt))
-                yb = yb[:, cfg.burn_in:]
+                idx = torch.from_numpy(starts[b : b + cfg.batch_size, None] + np.arange(round(cfg.seq_len * factor)))
+                xb, yb = (
+                    F.interpolate(
+                        t[idx].transpose(1, 2), size=cfg.seq_len, mode="linear", align_corners=True
+                    ).transpose(1, 2)
+                    for t in (xt, yt)
+                )
+                yb = yb[:, cfg.burn_in :]
             else:
-                idx = torch.from_numpy(starts[b:b + cfg.batch_size, None] + offsets)
-                xb, yb = xt[idx], yt[idx][:, cfg.burn_in:]
+                idx = torch.from_numpy(starts[b : b + cfg.batch_size, None] + offsets)
+                xb, yb = xt[idx], yt[idx][:, cfg.burn_in :]
             if cfg.channel_dropout > 0 and n_per_channel:
                 keep = torch.rand(xb.shape[0], 1, xb.shape[-1] // n_per_channel) >= cfg.channel_dropout
                 xb = xb * keep.repeat_interleave(n_per_channel, dim=-1)
@@ -83,7 +101,7 @@ def train_sequence_model(model: nn.Module, x: np.ndarray, y: np.ndarray, fit_row
                 xb = xb + shift.repeat_interleave(n_per_channel, dim=-1)
             if cfg.feature_noise > 0:
                 xb = xb + cfg.feature_noise * torch.randn_like(xb)
-            pred = model(xb)[:, cfg.burn_in:]
+            pred = model(xb)[:, cfg.burn_in :]
             loss = F.mse_loss(pred, yb)
             if cfg.corr_weight > 0:
                 loss = loss + cfg.corr_weight * correlation_loss(pred, yb)
@@ -101,7 +119,7 @@ def train_sequence_model(model: nn.Module, x: np.ndarray, y: np.ndarray, fit_row
         record = {"epoch": epoch, "train_loss": float(np.mean(losses))}
         if val_rows is not None and (not cosine or epoch == n_epochs - 1):
             ctx_start = max(val_rows.start - cfg.val_context, 0)
-            val_pred = predict_sequence(evaluated, x[ctx_start: val_rows.stop])[val_rows.start - ctx_start:]
+            val_pred = predict_sequence(evaluated, x[ctx_start : val_rows.stop])[val_rows.start - ctx_start :]
             record["val_score"] = float(score_fn(val_pred, y[val_rows]))
             if record["val_score"] > best_score:
                 best_score, best_state, best_epoch = record["val_score"], copy.deepcopy(evaluated.state_dict()), epoch

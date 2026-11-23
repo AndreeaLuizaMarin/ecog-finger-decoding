@@ -22,7 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 onnx = ["onnx>=1.15", "onnxruntime>=1.17"]
-dev = ["pytest>=7", "onnx>=1.15", "onnxruntime>=1.17"]
+dev = ["pytest>=7", "onnx>=1.15", "onnxruntime>=1.17", "ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -35,5 +35,6 @@ addopts = "-q"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["F", "E9", "B"]
-ignore = ["B905"]
+# pyflakes, pycodestyle, import order, bugbear, pyupgrade, simplify, NumPy-specific rules
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "NPY"]
+ignore = ["B905"]  # zip() without strict= is used on equal-length sequences on purpose
