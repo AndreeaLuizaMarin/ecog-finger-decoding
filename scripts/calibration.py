@@ -9,11 +9,9 @@ Decoders:
 * wiener          approach 3 (closed form);
 * lstm            approach 5;
 * lstm_selected   approach 5b (electrodes ranked on the D minutes; the number kept per patient as in 5b);
-* possm           approach 15, trained on the D minutes only;
-* possm_loo       approach 15 pretrained on the *other two* patients' whole training segments, then fine-tuned on
-                  the D minutes with fresh electrode embeddings (a new patient joining a pretrained model);
-* possm_loo_id    as possm_loo, but only the new electrode embeddings and the read-out are learned ("electrode
-                  identification", after POYO's unit identification); every other weight stays frozen.
+* lstm_others     an LSTM whose recurrent core was pretrained with labels on the *other two* patients' whole training
+                  segments (as approach 11b, which pretrains on all three), then fine-tuned on the D minutes with a
+                  fresh input layer: a new patient joining a pretrained model.
 
 Nothing here feeds back into any decoder; the test labels are read once per run and the look is logged.
 
@@ -34,10 +32,11 @@ import numpy as np
 import torch
 
 from ecogdecode.approaches import CLOSED_FORM, run_network
-from ecogdecode.config import DEFAULT_PROTOCOL
+from ecogdecode.config import DEFAULT_PROTOCOL, TrainConfig
 from ecogdecode.data import SUBJECTS, load_subject
+from ecogdecode.models import LSTMDecoder
 from ecogdecode.pipeline import Prepared, evaluate, prepare, standardise
-from ecogdecode.pretrain import pretrain_possm
+from ecogdecode.pretrain import pretrain_supervised
 from ecogdecode.provenance import environment, record_test_look
 
 OUT = Path("results/calibration")
@@ -58,19 +57,20 @@ def last_minutes(prep: Prepared, minutes: float | None) -> Prepared:
 
 
 def pretrained_on_others(preps: dict[int, Prepared], target: int, seed: int) -> torch.nn.Module:
-    """POSSM-style decoder pretrained on every other patient's whole training segment, with fresh electrode
-    embeddings sized for the target patient."""
+    """An LSTM whose recurrent core was pretrained with labels on every other patient's whole training segment
+    (``pretrain.pretrain_supervised``, as approach 11b), with a fresh input layer sized for the target patient."""
     others = {s: p for s, p in preps.items() if s != target}
     scaled = {s: standardise(p, p.train_rows) for s, p in others.items()}
-    npc = preps[target].cfg.n_per_channel
-    decoders = pretrain_possm(
+    decoders = pretrain_supervised(
         {s: v.x for s, v in scaled.items()},
         {s: v.y for s, v in scaled.items()},
         {s: p.train_rows for s, p in others.items()},
-        npc,
         seed=seed,
     )
-    return copy.deepcopy(next(iter(decoders.values()))).new_patient(preps[target].x.shape[1])
+    torch.manual_seed(seed)
+    model = LSTMDecoder(preps[target].x.shape[1])  # 128 units, as in pretraining
+    model.rnn = copy.deepcopy(next(iter(decoders.values())).rnn)
+    return model
 
 
 def run(data_dir: str, subject: int, seed: int, threads: int) -> None:
@@ -91,15 +91,11 @@ def run(data_dir: str, subject: int, seed: int, threads: int) -> None:
         results = {}
         if seed == 0:  # deterministic
             results["wiener"] = CLOSED_FORM["wiener"](sub, data, DEFAULT_PROTOCOL)
-        for key in ("lstm", "lstm_selected", "possm"):
+        for key in ("lstm", "lstm_selected"):
             results[key] = run_network(sub, key, seed, DEFAULT_PROTOCOL)
-        results["possm_loo"] = run_network(sub, "possm", seed, DEFAULT_PROTOCOL, model=copy.deepcopy(base))
-        frozen = copy.deepcopy(base)
-        for p in frozen.parameters():
-            p.requires_grad = False
-        for p in frozen.identification_parameters():
-            p.requires_grad = True
-        results["possm_loo_id"] = run_network(sub, "possm", seed, DEFAULT_PROTOCOL, model=frozen)
+        results["lstm_others"] = run_network(
+            sub, "lstm", seed, DEFAULT_PROTOCOL, model=copy.deepcopy(base), train_cfg=TrainConfig()
+        )
         for key, res in results.items():
             test = evaluate(prep, res.pred, data.test_flex)
             rows.append(

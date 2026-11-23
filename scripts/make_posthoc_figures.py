@@ -264,12 +264,88 @@ def onsets(subject: int = 3, before: int = 25, after: int = 50) -> None:
     plt.close(fig)
 
 
+CAL_NAMES = {
+    "wiener": "3 Wiener filter",
+    "lstm": "5 LSTM, all electrodes",
+    "lstm_selected": "5b LSTM, selected electrodes",
+    "lstm_others": "LSTM pretrained on the other two patients",
+}
+
+
+def calibration() -> None:
+    path = RES / "calibration.json"
+    if not path.exists():
+        return
+    cal = json.loads(path.read_text())
+    minutes = {"1.0": 1.0, "2.0": 2.0, "4.0": 4.0, "all": 6.5}
+    fig, ax = plt.subplots(figsize=(7.6, 4.2))
+    for (key, name), color in zip(CAL_NAMES.items(), SLOTS):
+        rows = cal.get(key, {})
+        xs = [minutes[m] for m in minutes if m in rows]
+        ys = [rows[m]["score"] for m in minutes if m in rows]
+        sd = [rows[m]["sd"] for m in minutes if m in rows]
+        if not xs:
+            continue
+        ax.errorbar(xs, ys, yerr=sd, color=color, lw=2, marker="o", markersize=5, capsize=2.5, label=name)
+    ax.set_xticks(list(minutes.values()), ["1", "2", "4", "6.5 (all)"])
+    ax.set_xlabel("Minutes of training data from the patient (the last minutes before the test segment)")
+    ax.set_ylabel("Test r (mean of 3 patients)")
+    ax.yaxis.grid(True, color=GRID, lw=0.8)
+    ax.legend(frameon=False, fontsize=8.5, loc="lower right")
+    ax.set_title("How much calibration data does a new patient need?", pad=10)
+    fig.tight_layout()
+    fig.savefig(FIG / "calibration.png", dpi=200)
+    plt.close(fig)
+
+
+LOSS_NAMES = {
+    "lstm": "5 LSTM, all electrodes",
+    "lstm_selected": "5b LSTM, selected electrodes",
+    "lstm_selected_dropout": "5b trained with electrode dropout",
+}
+
+
+def electrode_loss() -> None:
+    path = RES / "robustness_curve.json"
+    if not path.exists():
+        return
+    d = json.loads(path.read_text())["subjects"]
+    subjects = sorted(d, key=int)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.9), sharey=True)
+    for (key, name), color in zip(LOSS_NAMES.items(), SLOTS):
+        best = np.mean([d[s][key]["best_first"] for s in subjects], axis=0)
+        ax1.plot(range(len(best)), best, color=color, lw=2, marker="o", markersize=4, label=name)
+        ks = sorted(d[subjects[0]][key]["random_mean"], key=int)
+        mean = [np.mean([d[s][key]["random_mean"][k] for s in subjects]) for k in ks]
+        ax2.plot([int(k) for k in ks], mean, color=color, lw=2, marker="o", markersize=4, label=name)
+    ax1.set_xlabel("Electrodes lost, most informative first")
+    ax2.set_xlabel("Electrodes lost at random (mean of 20 draws)")
+    ax2.set_xscale("log", base=2)
+    ax2.set_xticks([1, 2, 4, 8, 16], ["1", "2", "4", "8", "16"])
+    ax1.set_ylabel("Test r (seed-0 models, mean of 3 patients)")
+    for ax in (ax1, ax2):
+        ax.yaxis.grid(True, color=GRID, lw=0.8)
+    ax1.legend(frameon=False, fontsize=8.5, loc="lower left")
+    fig.suptitle(
+        "Electrode failure: fewer electrodes means each one matters more",
+        x=0.01,
+        ha="left",
+        fontsize=10.5,
+        fontweight="bold",
+    )
+    fig.tight_layout()
+    fig.savefig(FIG / "electrode_loss.png", dpi=200)
+    plt.close(fig)
+
+
 def main() -> None:
     post = json.loads((RES / "posthoc.json").read_text())
     uncertainty(post)
     fingers(post)
     lag()
     onsets()
+    calibration()
+    electrode_loss()
 
 
 if __name__ == "__main__":

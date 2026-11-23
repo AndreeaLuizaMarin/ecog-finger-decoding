@@ -16,6 +16,11 @@ The same structure for ECoG band power, every 40 ms:
 Everything is causal (attention is within the current step, the GRU runs forward). An absent electrode (a masked
 artefact, set to the training mean) still contributes its embedding; ``key_padding_mask`` support is left out to keep
 the single-step form exportable.
+
+On these data the decoder did not learn (validation r 0.13, test 0.10; METHODS.md, sections 5 and 10): its
+validation score peaks within a few epochs, and starting the electrode embeddings at unit scale instead of 0.02
+(``embedding_scale``) did not help on validation. Routing information through attention over electrode tokens
+needs more data or training than 6.5 minutes of one patient give; POSSM itself is pretrained on many sessions.
 """
 
 from __future__ import annotations
@@ -35,11 +40,12 @@ class ElectrodeTokenizer(nn.Module):
         n_latents: int = 4,
         n_heads: int = 4,
         dropout: float = 0.1,
+        embedding_scale: float = 0.02,
     ):
         super().__init__()
-        self.n_channels, self.n_per_channel = n_channels, n_per_channel
+        self.n_channels, self.n_per_channel, self.embedding_scale = n_channels, n_per_channel, embedding_scale
         self.value = nn.Linear(n_per_channel, d_model)  # shared across electrodes and patients
-        self.electrode = nn.Parameter(0.02 * torch.randn(n_channels, d_model))  # patient-specific identity
+        self.electrode = nn.Parameter(embedding_scale * torch.randn(n_channels, d_model))  # patient-specific
         self.latents = nn.Parameter(0.02 * torch.randn(n_latents, d_model))
         self.attn = nn.MultiheadAttention(d_model, n_heads, dropout=dropout, batch_first=True)
         self.norm_tokens = nn.LayerNorm(d_model)
@@ -57,7 +63,7 @@ class ElectrodeTokenizer(nn.Module):
     def new_patient(self, n_channels: int) -> None:
         """Fresh electrode embeddings for another patient; every other weight is kept."""
         self.n_channels = n_channels
-        self.electrode = nn.Parameter(0.02 * torch.randn(n_channels, self.latents.shape[1]))
+        self.electrode = nn.Parameter(self.embedding_scale * torch.randn(n_channels, self.latents.shape[1]))
 
 
 class POSSMDecoder(nn.Module):
@@ -72,10 +78,16 @@ class POSSMDecoder(nn.Module):
         n_latents: int = 4,
         hidden: int = 256,
         dropout: float = 0.1,
+        embedding_scale: float = 0.02,
     ):
         super().__init__()
         self.tokenizer = ElectrodeTokenizer(
-            n_features // n_per_channel, n_per_channel, d_model, n_latents, dropout=dropout
+            n_features // n_per_channel,
+            n_per_channel,
+            d_model,
+            n_latents,
+            dropout=dropout,
+            embedding_scale=embedding_scale,
         )
         self.rnn = nn.GRU(n_latents * d_model, hidden, batch_first=True)
         self.out = nn.Linear(hidden, n_outputs)

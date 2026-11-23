@@ -149,7 +149,8 @@ def pretrain_possm(
     first = next(iter(xs))
     shared = POSSMDecoder(xs[first].shape[1], n_per_channel)
     d_model = shared.tokenizer.latents.shape[1]
-    embeddings = {s: nn.Parameter(0.02 * torch.randn(x.shape[1] // n_per_channel, d_model)) for s, x in xs.items()}
+    scale = shared.tokenizer.embedding_scale
+    embeddings = {s: nn.Parameter(scale * torch.randn(x.shape[1] // n_per_channel, d_model)) for s, x in xs.items()}
     params = [*shared.parameters(), *embeddings.values()]
     opt = torch.optim.AdamW(params, lr=lr, weight_decay=1e-2)
     xt = {s: torch.from_numpy(x) for s, x in xs.items()}
