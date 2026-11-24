@@ -54,6 +54,7 @@ from ecogdecode.handviz import (  # noqa: E402
     trace_panel,
 )
 from ecogdecode.pipeline import prepare  # noqa: E402
+from ecogdecode.provenance import record_test_look  # noqa: E402
 from ecogdecode.render import gif_excerpt, render_mp4  # noqa: E402
 
 
@@ -85,6 +86,7 @@ def main() -> None:
     ap.add_argument("--gif-seconds", type=float, default=16.0)
     ap.add_argument("--still", type=float, default=None, help="write one frame at this time (s) as PNG and stop")
     args = ap.parse_args()
+    record_test_look("video of the live decoder (make_animation.py)")
 
     res, s = Path(args.results), args.subject
     out = res / "figures"

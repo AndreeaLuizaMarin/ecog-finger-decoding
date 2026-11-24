@@ -26,6 +26,7 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 from ecogdecode.data import FINGERS, SCORED_FINGERS, SUBJECTS, load_subject  # noqa: E402
 from ecogdecode.evaluation import pearson_r, to_sample_rate  # noqa: E402
 from ecogdecode.offline import upsample_linear  # noqa: E402
+from ecogdecode.provenance import record_test_look  # noqa: E402
 
 RES = Path("results")
 FIG = RES / "figures"
@@ -338,6 +339,7 @@ def electrode_loss() -> None:
 
 
 def main() -> None:
+    record_test_look("figures of the post-hoc analyses (make_posthoc_figures.py)")
     post = json.loads((RES / "posthoc.json").read_text())
     uncertainty(post)
     fingers(post)

@@ -22,6 +22,7 @@ from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.evaluation import score_test
 from ecogdecode.offline import score_1khz, upsample_linear
 from ecogdecode.pipeline import prepare
+from ecogdecode.provenance import record_test_look
 
 
 def main() -> None:
@@ -29,6 +30,7 @@ def main() -> None:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--results", default="results")
     args = ap.parse_args()
+    record_test_look("stored scores recomputed from the saved predictions (verify_scores.py)")
     res = Path(args.results)
     runs = {p.stem: json.loads(p.read_text()) for p in sorted((res / "runs").glob("*.json"))}
     replicas = json.loads((res / "offline" / "replicas.json").read_text())

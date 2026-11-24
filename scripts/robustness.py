@@ -24,6 +24,7 @@ from ecogdecode.data import SUBJECTS, load_subject
 from ecogdecode.evaluation import causal_ema
 from ecogdecode.models.training import predict_sequence
 from ecogdecode.pipeline import evaluate, prepare, top_electrodes
+from ecogdecode.provenance import record_test_look
 
 
 def main() -> None:
@@ -33,6 +34,7 @@ def main() -> None:
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--out", default="results/robustness.json")
     args = ap.parse_args()
+    record_test_look("one electrode lost (robustness.py)")
     torch.set_num_threads(args.threads)
 
     report = {}

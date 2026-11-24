@@ -62,7 +62,7 @@ def main() -> None:
                 + f" | {test} | {lat_txt} |"
             )
     table = "\n".join(lines) + "\n"
-    (res / "summary.md").write_text(table)
+    (res / "summary.md").write_text(table, encoding="utf-8")
 
     metrics = {
         "approaches": {

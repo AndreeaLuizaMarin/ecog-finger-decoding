@@ -22,6 +22,7 @@ import numpy as np  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
 from ecogdecode.data import FINGERS  # noqa: E402
+from ecogdecode.provenance import record_test_look  # noqa: E402
 
 STEP_S = 0.04
 SURFACE, INK, INK_2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
@@ -233,6 +234,7 @@ def main() -> None:
     )
     ap.add_argument("--gated", default="gated_lfp")
     args = ap.parse_args()
+    record_test_look("figures of the benchmark (make_figures.py)")
     res = Path(args.results)
     figs = res / "figures"
     figs.mkdir(parents=True, exist_ok=True)

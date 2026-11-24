@@ -10,6 +10,7 @@ import argparse
 import contextlib
 import io
 import json
+import sys
 from pathlib import Path
 
 R = Path("results")
@@ -145,7 +146,9 @@ def fingerflex() -> None:
     f = load("offline/fingerflex.json")
     if not f:
         return
-    print("| FingerFlex, offline | S1 | S2 | S3 | Mean ± SD over seeds | Notebook metric | Epochs kept (per subject) |")
+    several = len(f["seeds"]) > 1
+    mean_head = "Mean ± SD over seeds" if several else f"Mean (seed {f['seeds'][0]})"
+    print(f"| FingerFlex, offline | S1 | S2 | S3 | {mean_head} | Notebook metric | Epochs kept (per subject) |")
     print("|---|---|---|---|---|---|---|")
     for kind, label in (
         ("published", "as published: epoch with the best test correlation"),
@@ -154,7 +157,8 @@ def fingerflex() -> None:
         k = f[kind]
         subj = " | ".join(f"{k['subjects'][s]['score']:.3f}" for s in SUBJECTS)
         epochs = "; ".join(f"S{s}: {', '.join(map(str, k['epochs'][s]))}" for s in SUBJECTS)
-        print(f"| {label} | {subj} | {k['score']:.3f} ± {k['sd']:.3f} | {k['notebook_metric']:.3f} | {epochs} |")
+        mean = f"{k['score']:.3f}" + (f" ± {k['sd']:.3f}" if several else "")
+        print(f"| {label} | {subj} | {mean} | {k['notebook_metric']:.3f} | {epochs} |")
     print()
     print(
         f"Seeds: {', '.join(map(str, f['seeds']))}. Competition metric (1 kHz, ring finger excluded); the notebook "
@@ -167,18 +171,28 @@ def two_by_two() -> None:
     rep, m, off = load("offline/replicas.json"), load("metrics.json"), load("offline/lstm_offline.json")
     if not (rep and m and off):
         return
+    live = m["approaches"]
     winner_offline = rep["mean"]["liang_offline"]
-    winner_live = m["approaches"]["liang_bougrain"]["score"]
-    lstm_live = m["approaches"]["lstm_selected"]["score"]
+    winner_live = live["liang_bougrain"]["score"]
+    lstm_live = live["lstm_selected"]
     print("| Method | Designed for | Scored offline | Scored live | Cost of running live |")
     print("|---|---|---|---|---|")
     print(
         f"| Liang and Bougrain, 2008 winner | offline | {winner_offline:.3f} (replica) | {winner_live:.3f} "
         f"(approach 1) | {winner_live - winner_offline:+.3f} |"
     )
+    ff = load("offline/fingerflex.json")
+    if ff and "fingerflex" in live:
+        seeds = ff["seeds"]
+        which = f"seed {seeds[0]}" if len(seeds) == 1 else f"{len(seeds)} seeds"
+        ff_offline, ff_live = ff["validation_epoch"]["score"], live["fingerflex"]
+        print(
+            f"| FingerFlex (Lomtev et al., 2023) | offline | {ff_offline:.3f} (epoch chosen on validation; {which}) | "
+            f"{ff_live['score']:.3f} ± {ff_live['sd']:.3f} (approach 14) | {ff_live['score'] - ff_offline:+.3f} |"
+        )
     print(
         f"| LSTM on selected electrodes | live | {off['score']:.3f} ± {off['sd']:.3f} (bidirectional, zero-phase) | "
-        f"{lstm_live:.3f} (approach 5b) | {lstm_live - off['score']:+.3f} |"
+        f"{lstm_live['score']:.3f} ± {lstm_live['sd']:.3f} (approach 5b) | {lstm_live['score'] - off['score']:+.3f} |"
     )
     print()
 
@@ -299,11 +313,12 @@ def main() -> None:
     args = ap.parse_args()
     if args.fill:
         path = Path(args.fill)
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         for name, fn in SECTIONS.items():
             text = text.replace("{{" + name + "}}", render(fn))
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
         return
+    sys.stdout.reconfigure(encoding="utf-8")  # the tables contain ± and are usually redirected to a file
     for name, fn in SECTIONS.items():
         print(f"## {name}\n\n{render(fn)}\n")
     print(f"(generated from the JSON files in {R}/; numbers rounded to 3 decimals)")
