@@ -104,8 +104,9 @@ def render_mp4(build: Build, n_frames: int, path: Path, jobs: int = 2, fps: int 
     return path
 
 
-def gif_excerpt(mp4: Path, gif: Path, start_s: float, seconds: float, fps: int = 10, width: int = 800) -> Path:
-    """A short GIF cut from the video (palette per clip, for a small file)."""
+def gif_excerpt(mp4: Path, gif: Path, start_s: float, seconds: float, fps: int = 10, width: int = 560) -> Path:
+    """A short GIF cut from the video (palette per clip, for a small file; 560 px wide keeps a 16 s README GIF
+    under about 5 MB)."""
     palette = Path(gif).with_suffix(".palette.png")
     vf = f"fps={fps},scale={width}:-1:flags=lanczos"
     clip = ["-ss", f"{start_s}", "-t", f"{seconds}", "-i", str(mp4)]

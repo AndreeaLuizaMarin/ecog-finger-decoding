@@ -38,3 +38,5 @@
 {"time": "2026-11-24T08:03:48+00:00", "purpose": "figures of the post-hoc analyses (make_posthoc_figures.py)", "commit": "a32ef0c5107ebcc4301ecd178f0fb490d8b879a6", "dirty": false}
 {"time": "2026-11-24T08:04:31+00:00", "purpose": "figures of the benchmark (make_figures.py)", "commit": "a32ef0c5107ebcc4301ecd178f0fb490d8b879a6", "dirty": true}
 {"time": "2026-11-24T08:06:34+00:00", "purpose": "figures of the benchmark (make_figures.py)", "commit": "9ed8118008d42a111015c7376ad4e405150c5b84", "dirty": false}
+{"time": "2026-11-24T08:07:36+00:00", "purpose": "video, live versus offline (make_offline_animation.py)", "commit": "2fc439572ac3e0f628e4a2f7c9063aed87cb1f35", "dirty": false}
+{"time": "2026-11-24T08:07:58+00:00", "purpose": "video, live versus offline (make_offline_animation.py)", "commit": "2fc439572ac3e0f628e4a2f7c9063aed87cb1f35", "dirty": false}

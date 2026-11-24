@@ -55,7 +55,7 @@ def test_hand_geometry_and_drawing():
     plt.close(fig)
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="needs ffmpeg and ffprobe")
 def test_render_without_fork_gives_every_frame(tmp_path, monkeypatch):
     """On Windows there is no "fork": frames are then drawn in this process, and none may be lost."""
     from ecogdecode import render
