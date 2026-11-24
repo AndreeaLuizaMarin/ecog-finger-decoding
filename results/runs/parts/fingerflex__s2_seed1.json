@@ -1,0 +1,108 @@
+{
+  "key": "fingerflex",
+  "number": "14",
+  "label": "FingerFlex (Lomtev et al., 2023), made causal",
+  "family": "deep",
+  "protocol": {
+    "val_fraction": 0.2,
+    "warmup_steps": 25,
+    "seeds": [
+      1
+    ],
+    "refit": true,
+    "adaptive_norm_s": 0.0,
+    "smoothing_ms": [
+      0.0,
+      40.0,
+      80.0,
+      120.0,
+      160.0,
+      240.0,
+      320.0
+    ]
+  },
+  "train_config": {
+    "seq_len": 256,
+    "burn_in": 50,
+    "batch_size": 16,
+    "windows_per_epoch": 128,
+    "max_epochs": 60,
+    "patience": 10,
+    "val_context": 750,
+    "lr": 0.001,
+    "weight_decay": 0.01,
+    "corr_weight": 0.0,
+    "channel_dropout": 0.0,
+    "weight_ema": 0.0,
+    "gain_jitter": 0.0,
+    "feature_noise": 0.0,
+    "time_warp": 0.0,
+    "schedule": "constant",
+    "seed": 0
+  },
+  "environment": {
+    "python": "3.11.4",
+    "torch": "2.15.0+cpu",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "commit": "42cb236eb491e3dc684430817731e28243665f30",
+    "dirty": false,
+    "threads": 4
+  },
+  "subjects": {
+    "2": {
+      "val_score": 0.41608763999518517,
+      "score": 0.33177464581476823,
+      "sd": 0.0,
+      "r": [
+        0.4356267524910877,
+        0.38794003235068636,
+        0.25926424947099586,
+        0.3830867437893888,
+        0.2442675489463032
+      ],
+      "runs": [
+        {
+          "val_score": 0.41608763999518517,
+          "selected": {
+            "epochs": 4,
+            "smooth_ms": 40.0,
+            "val_score_unsmoothed": 0.4099652342616955,
+            "val_score": 0.41608763999518517,
+            "seed": 1,
+            "val_by_epoch": [
+              0.18664552827115627,
+              0.28042959758997443,
+              0.3591596578535301,
+              0.4099652342616955,
+              0.3815089831738405,
+              0.38325895334685167,
+              0.3930874735419867,
+              0.37800372882177763,
+              0.3970042802918767
+            ]
+          },
+          "r": [
+            0.4356267524910877,
+            0.38794003235068636,
+            0.25926424947099586,
+            0.3830867437893888,
+            0.2442675489463032
+          ],
+          "score": 0.33177464581476823,
+          "scored_fingers": [
+            0,
+            1,
+            2,
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "val_score": 0.41608763999518517,
+  "score": 0.33177464581476823,
+  "sd": 0.0,
+  "seconds": 8001.8
+}

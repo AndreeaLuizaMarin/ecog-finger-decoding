@@ -1,0 +1,14 @@
+S1: masking {'fraction_of_electrode_steps': 0.0001225806451612903, 'fraction_of_steps_with_any': 0.0046, 'electrodes_ever_masked': 21}
+S2: masking {'fraction_of_electrode_steps': 0.0005291666666666667, 'fraction_of_steps_with_any': 0.0176, 'electrodes_ever_masked': 19}
+S3: masking {'fraction_of_electrode_steps': 0.001465625, 'fraction_of_steps_with_any': 0.085, 'electrodes_ever_masked': 22}
+   lstm_selected - lstm             +0.062  95% CI [+0.029, +0.094]
+   lstm_selected - fingerflex       +0.137  95% CI [+0.091, +0.183]
+   lstm_selected - possm            +0.450  95% CI [+0.406, +0.491]
+            lstm - mamba            +0.023  95% CI [-0.007, +0.060]
+            lstm - tcn              +0.003  95% CI [-0.027, +0.035]
+            lstm - s4d              +0.063  95% CI [+0.029, +0.101]
+            lstm - wiener           +0.063  95% CI [+0.038, +0.092]
+            lstm - possm            +0.388  95% CI [+0.345, +0.430]
+          wiener - liang_bougrain   +0.052  95% CI [-0.038, +0.069]
+          wiener - kalman           +0.042  95% CI [+0.027, +0.056]
+posthoc exit 0

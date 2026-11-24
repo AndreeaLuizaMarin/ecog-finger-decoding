@@ -1,0 +1,10 @@
+S1 seed 0: offline 5b 0.620 (sigma 40 ms, 28 epochs)
+S1 seed 1: offline 5b 0.649 (sigma 0 ms, 30 epochs)
+S1 seed 2: offline 5b 0.594 (sigma 40 ms, 21 epochs)
+S2 seed 0: offline 5b 0.517 (sigma 40 ms, 28 epochs)
+S2 seed 1: offline 5b 0.540 (sigma 40 ms, 12 epochs)
+S2 seed 2: offline 5b 0.481 (sigma 40 ms, 25 epochs)
+S3 seed 0: offline 5b 0.706 (sigma 0 ms, 16 epochs)
+S3 seed 1: offline 5b 0.716 (sigma 0 ms, 16 epochs)
+S3 seed 2: offline 5b 0.729 (sigma 0 ms, 33 epochs)
+offline 5b: 0.617 ± 0.014

@@ -1,0 +1,9 @@
+S1 lstm                   intact 0.431  best-first k=1 0.315  k=4 0.108  k=8 0.054  random k=4 0.387
+S1 lstm_selected          intact 0.535  best-first k=1 0.342  k=4 0.151  k=8 0.054  random k=4 0.482
+S1 lstm_selected_dropout  intact 0.545  best-first k=1 0.396  k=4 0.137  k=8 0.111  random k=4 0.501
+S2 lstm                   intact 0.439  best-first k=1 0.331  k=4 0.206  k=8 0.070  random k=4 0.412
+S2 lstm_selected          intact 0.458  best-first k=1 0.304  k=4 0.086  k=8 -0.004  random k=4 0.432
+S2 lstm_selected_dropout  intact 0.470  best-first k=1 0.383  k=4 0.170  k=8 0.003  random k=4 0.454
+S3 lstm                   intact 0.578  best-first k=1 0.487  k=4 0.231  k=8 0.161  random k=4 0.558
+S3 lstm_selected          intact 0.638  best-first k=1 0.561  k=4 0.266  k=8 0.123  random k=4 0.612
+S3 lstm_selected_dropout  intact 0.616  best-first k=1 0.567  k=4 0.327  k=8 0.188  random k=4 0.595

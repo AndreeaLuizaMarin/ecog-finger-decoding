@@ -1,0 +1,6 @@
+22:12:16 start offline:2:0
+S2 seed 0
+  run B (epoch chosen on validation): [0.179, 0.445, 0.63, 0.605, 0.651, 0.647, 0.651, 0.653, 0.636, 0.633, 0.647, 0.642, 0.629]
+  run A (test monitored): [0.218, 0.451, 0.523, 0.538, 0.552, 0.551, 0.542, 0.543, 0.551, 0.539, 0.544, 0.533, 0.54, 0.548, 0.552, 0.536, 0.545, 0.547, 0.546, 0.548]
+S2 seed 0: published 0.549 (epoch 5), epoch chosen on validation 0.540 (epoch 8)
+03:01:28 done offline:2:0 (exit 0)

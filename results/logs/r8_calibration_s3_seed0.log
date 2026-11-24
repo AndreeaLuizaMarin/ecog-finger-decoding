@@ -1,0 +1,17 @@
+S3 seed 0  1.0 min  wiener         val 0.365  test 0.421
+S3 seed 0  1.0 min  lstm           val 0.574  test 0.424
+S3 seed 0  1.0 min  lstm_selected  val 0.563  test 0.565
+S3 seed 0  1.0 min  lstm_others    val 0.533  test 0.445
+S3 seed 0  2.0 min  wiener         val 0.296  test 0.439
+S3 seed 0  2.0 min  lstm           val 0.476  test 0.364
+S3 seed 0  2.0 min  lstm_selected  val 0.451  test 0.586
+S3 seed 0  2.0 min  lstm_others    val 0.445  test 0.457
+S3 seed 0  4.0 min  wiener         val 0.462  test 0.484
+S3 seed 0  4.0 min  lstm           val 0.570  test 0.583
+S3 seed 0  4.0 min  lstm_selected  val 0.592  test 0.589
+S3 seed 0  4.0 min  lstm_others    val 0.529  test 0.544
+S3 seed 0  all min  wiener         val 0.567  test 0.532
+S3 seed 0  all min  lstm           val 0.725  test 0.578
+S3 seed 0  all min  lstm_selected  val 0.748  test 0.638
+S3 seed 0  all min  lstm_others    val 0.674  test 0.568
+exit 0 for s3 seed0

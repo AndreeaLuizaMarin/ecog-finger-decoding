@@ -1,0 +1,13 @@
+S2 seed 1  1.0 min  lstm           val 0.499  test 0.125
+S2 seed 1  1.0 min  lstm_selected  val 0.608  test 0.216
+S2 seed 1  1.0 min  lstm_others    val 0.256  test 0.108
+S2 seed 1  2.0 min  lstm           val 0.209  test 0.170
+S2 seed 1  2.0 min  lstm_selected  val 0.472  test 0.337
+S2 seed 1  2.0 min  lstm_others    val 0.369  test 0.101
+S2 seed 1  4.0 min  lstm           val 0.451  test 0.278
+S2 seed 1  4.0 min  lstm_selected  val 0.703  test 0.474
+S2 seed 1  4.0 min  lstm_others    val 0.433  test 0.280
+S2 seed 1  all min  lstm           val 0.404  test 0.369
+S2 seed 1  all min  lstm_selected  val 0.699  test 0.476
+S2 seed 1  all min  lstm_others    val 0.373  test 0.330
+exit 0 for s2 seed1

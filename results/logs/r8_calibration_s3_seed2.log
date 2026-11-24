@@ -1,0 +1,13 @@
+S3 seed 2  1.0 min  lstm           val 0.563  test 0.482
+S3 seed 2  1.0 min  lstm_selected  val 0.575  test 0.583
+S3 seed 2  1.0 min  lstm_others    val 0.400  test 0.368
+S3 seed 2  2.0 min  lstm           val 0.474  test 0.488
+S3 seed 2  2.0 min  lstm_selected  val 0.464  test 0.563
+S3 seed 2  2.0 min  lstm_others    val 0.326  test 0.382
+S3 seed 2  4.0 min  lstm           val 0.609  test 0.601
+S3 seed 2  4.0 min  lstm_selected  val 0.603  test 0.641
+S3 seed 2  4.0 min  lstm_others    val 0.540  test 0.557
+S3 seed 2  all min  lstm           val 0.731  test 0.689
+S3 seed 2  all min  lstm_selected  val 0.722  test 0.670
+S3 seed 2  all min  lstm_others    val 0.579  test 0.598
+exit 0 for s3 seed2

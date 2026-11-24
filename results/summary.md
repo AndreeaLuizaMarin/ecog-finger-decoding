@@ -13,6 +13,7 @@
 | 7 | Mamba (selective state space) | 0.44 | 0.47 | 0.28 | 0.61 | **0.46** ± 0.01 | – |
 | 8 | Neural ODE (continuous-time dynamics) | 0.34 | 0.18 | 0.12 | 0.49 | **0.26** ± 0.01 | – |
 | 8b | Causal temporal convolutional network (TCN) | 0.47 | 0.43 | 0.33 | 0.63 | **0.46** ± 0.02 | – |
+| 14 | FingerFlex (Lomtev et al., 2023), made causal | 0.48 | 0.36 | 0.31 | 0.51 | **0.39** ± 0.01 | – |
 | | *New in this project* | | | | | | |
 | 9 | LFP-gated decoder (gate: LMP, mu, beta) | 0.44 | 0.44 | 0.28 | 0.58 | **0.43** ± 0.01 | 0.72 ms |
 | 9b | LFP-gated decoder, ablation: gate sees all bands | 0.42 | 0.45 | 0.27 | 0.58 | **0.44** ± 0.01 | – |
@@ -21,3 +22,4 @@
 | 11b | Multi-patient supervised pretraining + fine-tuned LSTM | 0.49 | 0.43 | 0.38 | 0.62 | **0.48** ± 0.01 | – |
 | 12 | Manifold-gated decoder, PCA manifold | 0.56 | 0.45 | 0.37 | 0.62 | **0.48** ± 0.02 | – |
 | 13 | Manifold-gated decoder, CEBRA-style manifold | 0.53 | 0.45 | 0.38 | 0.61 | **0.48** ± 0.01 | – |
+| 15 | POSSM-style electrode-token decoder (after Ryoo et al., 2025) | 0.13 | 0.03 | 0.08 | 0.18 | **0.09** ± 0.00 | – |

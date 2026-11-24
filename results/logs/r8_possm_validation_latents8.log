@@ -1,0 +1,4 @@
+scale1_latents8    S1 validation 0.086 (3 epochs)
+scale1_latents8    S2 validation 0.127 (5 epochs)
+scale1_latents8    S3 validation 0.180 (23 epochs)
+scale1_latents8    mean validation 0.131
