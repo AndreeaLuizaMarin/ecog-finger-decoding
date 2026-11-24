@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import matplotlib
@@ -76,7 +77,7 @@ def load_pred(res: Path, name: str, subject: str) -> tuple[np.ndarray, np.ndarra
 def approaches_figure(metrics: dict, out: Path) -> None:
     rows = [
         (
-            m["number"] + "  " + m["label"].split(" (")[0],
+            m["number"] + "  " + re.sub(r" \([^)]*\)", "", m["label"]),  # without the parenthetical details
             m["score"],
             m["sd"],
             list(m["per_subject"].values()),
@@ -91,7 +92,18 @@ def approaches_figure(metrics: dict, out: Path) -> None:
         if sd > 0:
             ax.errorbar(value, i, xerr=sd, color=INK, lw=1.2, capsize=2.5, zorder=4)
         ax.scatter(subj, [i] * len(subj), s=16, color=INK, edgecolor=SURFACE, linewidth=1.0, zorder=3)
-        ax.text(0.012, i, f"{value:.2f}", va="center", fontsize=9, color=SURFACE, fontweight="bold", zorder=4)
+        inside = value >= 0.15  # a short bar has no room for its value: write it after the subject dots instead
+        x_text = 0.012 if inside else max([value + sd, *subj]) + 0.015
+        ax.text(
+            x_text,
+            i,
+            f"{value:.2f}",
+            va="center",
+            fontsize=9,
+            color=SURFACE if inside else INK,
+            fontweight="bold",
+            zorder=4,
+        )
     ax.axvline(0.46, color=INK_2, lw=1, ls=(0, (4, 3)), zorder=1)
     ax.text(0.46 - 0.005, -0.95, "2008 winner as submitted (0.46)", fontsize=8, color=INK_2, ha="right")
     ax.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=9)
