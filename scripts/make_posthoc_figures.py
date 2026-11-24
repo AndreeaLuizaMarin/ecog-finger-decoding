@@ -32,6 +32,7 @@ RES = Path("results")
 FIG = RES / "figures"
 SURFACE, INK, INK_2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 SLOTS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]  # categorical, fixed order
+# Each figure takes the slots in order; approach 5b comes first in every figure, so it is always the first colour.
 DIVERGING = LinearSegmentedColormap.from_list("blue_red", ["#2a78d6", "#f0efec", "#e34948"])
 LAGS_MS = np.arange(-400, 401, 10)
 PRETTY = {
@@ -265,9 +266,9 @@ def onsets(subject: int = 3, before: int = 25, after: int = 50) -> None:
 
 
 CAL_NAMES = {
-    "wiener": "3 Wiener filter",
-    "lstm": "5 LSTM, all electrodes",
     "lstm_selected": "5b LSTM, selected electrodes",
+    "lstm": "5 LSTM, all electrodes",
+    "wiener": "3 Wiener filter",
     "lstm_others": "LSTM pretrained on the other two patients",
 }
 
@@ -299,8 +300,8 @@ def calibration() -> None:
 
 
 LOSS_NAMES = {
-    "lstm": "5 LSTM, all electrodes",
     "lstm_selected": "5b LSTM, selected electrodes",
+    "lstm": "5 LSTM, all electrodes",
     "lstm_selected_dropout": "5b trained with electrode dropout",
 }
 
@@ -327,7 +328,7 @@ def electrode_loss() -> None:
         ax.yaxis.grid(True, color=GRID, lw=0.8)
     ax1.legend(frameon=False, fontsize=8.5, loc="lower left")
     fig.suptitle(
-        "Electrode failure: fewer electrodes means each one matters more",
+        "Decoding rests on a few electrodes: losing the best ones costs far more than losing many at random",
         x=0.01,
         ha="left",
         fontsize=10.5,
