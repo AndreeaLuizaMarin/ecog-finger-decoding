@@ -1,3 +1,4 @@
+S1 fingerflex             recomputed 0.3300   stored 0.3300
 S1 gated_all              recomputed 0.4464   stored 0.4464
 S1 gated_lfp              recomputed 0.4246   stored 0.4246
 S1 gated_transient        recomputed 0.5064   stored 0.5064
@@ -10,6 +11,7 @@ S1 manifold_contrastive   recomputed 0.4660   stored 0.4660
 S1 manifold_pca           recomputed 0.4572   stored 0.4572
 S1 multipatient_lstm      recomputed 0.4187   stored 0.4187
 S1 neural_ode             recomputed 0.3935   stored 0.3935
+S1 possm                  recomputed 0.0380   stored 0.0380
 S1 pretrained_lstm        recomputed 0.4444   stored 0.4444
 S1 s4d                    recomputed 0.3238   stored 0.3238
 S1 switching_linear       recomputed 0.4754   stored 0.4754
@@ -19,6 +21,10 @@ S1 liang_offline          recomputed 0.4432   stored 0.4432
 S1 liang_offline_intercept recomputed 0.4446   stored 0.4446
 S1 liang_causal           recomputed 0.3097   stored 0.2993  (stored score used a hold, not interpolation)
 S1 flamary_offline        recomputed 0.4088   stored 0.4072  (output was at 250 Hz; saved at 25 Hz, so small differences are expected)
+S1 fingerflex_published   recomputed 0.6786   stored 0.6762  (saved at 25 Hz from a finer output, so small differences are expected)
+S1 fingerflex_validation_epoch recomputed 0.6483   stored 0.6459  (saved at 25 Hz from a finer output, so small differences are expected)
+S1 lstm_selected_offline  recomputed 0.6202   stored 0.6200  (saved at 25 Hz from a finer output, so small differences are expected)
+S2 fingerflex             recomputed 0.3267   stored 0.3267
 S2 gated_all              recomputed 0.2864   stored 0.2864
 S2 gated_lfp              recomputed 0.3077   stored 0.3077
 S2 gated_transient        recomputed 0.2993   stored 0.2993
@@ -31,6 +37,7 @@ S2 manifold_contrastive   recomputed 0.3913   stored 0.3913
 S2 manifold_pca           recomputed 0.4087   stored 0.4087
 S2 multipatient_lstm      recomputed 0.3803   stored 0.3803
 S2 neural_ode             recomputed -0.0053   stored -0.0053
+S2 possm                  recomputed 0.0949   stored 0.0949
 S2 pretrained_lstm        recomputed 0.4033   stored 0.4033
 S2 s4d                    recomputed 0.3350   stored 0.3350
 S2 switching_linear       recomputed 0.2609   stored 0.2609
@@ -40,6 +47,10 @@ S2 liang_offline          recomputed 0.3128   stored 0.3128
 S2 liang_offline_intercept recomputed 0.3164   stored 0.3164
 S2 liang_causal           recomputed 0.2166   stored 0.2105  (stored score used a hold, not interpolation)
 S2 flamary_offline        recomputed 0.2777   stored 0.2754  (output was at 250 Hz; saved at 25 Hz, so small differences are expected)
+S2 fingerflex_published   recomputed 0.5506   stored 0.5494  (saved at 25 Hz from a finer output, so small differences are expected)
+S2 fingerflex_validation_epoch recomputed 0.5406   stored 0.5399  (saved at 25 Hz from a finer output, so small differences are expected)
+S2 lstm_selected_offline  recomputed 0.5169   stored 0.5169  (saved at 25 Hz from a finer output, so small differences are expected)
+S3 fingerflex             recomputed 0.5547   stored 0.5547
 S3 gated_all              recomputed 0.5528   stored 0.5528
 S3 gated_lfp              recomputed 0.6100   stored 0.6100
 S3 gated_transient        recomputed 0.5689   stored 0.5689
@@ -52,6 +63,7 @@ S3 manifold_contrastive   recomputed 0.6115   stored 0.6115
 S3 manifold_pca           recomputed 0.6340   stored 0.6340
 S3 multipatient_lstm      recomputed 0.6196   stored 0.6196
 S3 neural_ode             recomputed 0.4489   stored 0.4489
+S3 possm                  recomputed 0.1383   stored 0.1383
 S3 pretrained_lstm        recomputed 0.5796   stored 0.5796
 S3 s4d                    recomputed 0.5874   stored 0.5874
 S3 switching_linear       recomputed 0.5388   stored 0.5388
@@ -61,4 +73,7 @@ S3 liang_offline          recomputed 0.5937   stored 0.5937
 S3 liang_offline_intercept recomputed 0.4559   stored 0.4559
 S3 liang_causal           recomputed 0.4312   stored 0.4301  (stored score used a hold, not interpolation)
 S3 flamary_offline        recomputed 0.3152   stored 0.3149  (output was at 250 Hz; saved at 25 Hz, so small differences are expected)
+S3 fingerflex_published   recomputed 0.6570   stored 0.6557  (saved at 25 Hz from a finer output, so small differences are expected)
+S3 fingerflex_validation_epoch recomputed 0.6036   stored 0.6034  (saved at 25 Hz from a finer output, so small differences are expected)
+S3 lstm_selected_offline  recomputed 0.7055   stored 0.7056  (saved at 25 Hz from a finer output, so small differences are expected)
 largest difference: 6.60e-10

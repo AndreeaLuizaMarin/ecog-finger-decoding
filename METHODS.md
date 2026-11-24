@@ -1,4 +1,4 @@
-# Methods report: live and offline decoding of finger flexion from human ECoG
+# Methods report: causal and offline decoding of finger flexion from human ECoG
 
 *The full account of the project: what was done, why each choice was made, what the literature and the published
 code show, and where every number comes from. Every results table below is printed by
@@ -14,15 +14,19 @@ she directed the project and reviewed the work.
 
 | Path | What it is |
 |---|---|
-| `src/ecogdecode/` | the library: data loading, causal and offline features, every decoder, training, protocol, streaming, offline replicas |
+| `src/ecogdecode/` | the library: data loading, causal and offline features, every decoder, training, protocol, streaming (`online.py`: the packaged `OnlineDecoder`), offline replicas, FingerFlex (`fingerflex.py`), provenance (`provenance.py`) |
 | `scripts/` | every experiment: `run_benchmark.py` (the blind test), `explore_validation.py` (validation studies), `kalman_study.py`, `offline_study.py`, `robustness.py`, `summarise.py`, `report_tables.py` (prints every table below), `verify_scores.py` (recomputes every stored score from the saved predictions), figures and animations |
-| `tests/` | 67 tests on synthetic data (causality, streaming equals offline, exact scans, offline replicas use the future, display scaling, ...) |
+| `tests/` | 84 tests on synthetic data (causality, streaming equals offline, exact scans, offline replicas use the future, test labels stay out of training arrays, display scaling, ...) |
 | `results/runs/*.json` | per approach: validation and test scores per subject and seed, every chosen setting |
 | `results/preds/` | test predictions of the seed-0 model of each approach (25 Hz steps), and the recorded flexion at the same steps |
 | `results/validation_study*.json` | every validation-only configuration (rounds 4 and 5) |
 | `results/kalman_study.json` | the Kalman variants (validation only) |
 | `results/offline/` | offline replicas, the Wiener live/offline comparison, epoch selection on test, non-causal smoothing, diagnostics; `offline/preds/` holds the replicas' test predictions |
-| `results/robustness.json` | one electrode lost (post hoc) |
+| `results/robustness.json`, `results/robustness_curve.json` | one electrode lost; electrodes lost best first and at random (post hoc) |
+| `results/posthoc.json` | bootstrap intervals, paired differences, lag, cross-finger correlations, movement envelope, masking (post hoc) |
+| `results/calibration.json`, `results/calibration/` | test r against minutes of training data (post hoc) |
+| `results/offline/fingerflex.json`, `results/offline/lstm_offline.json` | FingerFlex as published (both epoch rules); approach 5b given every offline liberty |
+| `results/test_looks.jsonl` | one line per script run that read the test labels: time, purpose, git commit, uncommitted changes (from round 8) |
 | `results/figures/` | figures and the two videos (whole test segment; README GIFs are 16 s excerpts) |
 | `results/logs/` | console logs of the long runs (index in `results/logs/README.md`), including `verify_scores.log` |
 | `results/report_tables.md` | the output of `report_tables.py` |
@@ -68,9 +72,11 @@ labels (`true_labels.zip`) were published by the organisers after the competitio
 
 ---
 
-## 3. The live protocol (shared by approaches 1-13)
+## 3. The live protocol (shared by every approach)
 
 ### 3.1 What "live" means here
+*Live* means pseudo-online: recorded data replayed causally, as a live system would process them, without a
+closed loop (no patient saw the decoder's output).
 Every decoder outputs a prediction every 40 ms (the glove's native rate) using only ECoG samples up to that moment:
 forward-only filters, trailing windows, causal models. This is enforced by tests that change future samples and
 check that no earlier output changes (`tests/test_features.py`, `tests/test_models.py`). Predictions are held
@@ -85,6 +91,9 @@ the whole training segment and scored once on the test segment. *Why:* random sp
 information between neighbouring samples; the latest block best resembles the test conditions.
 
 ### 3.3 Features (`src/ecogdecode/features.py`, `config.py`)
+Sections 3.3 and 3.4 apply to every approach except 14 (FingerFlex), which has its own features and training
+(section 9); the rest of section 3 applies to all.
+
 * Re-referencing to the **median** across electrodes at each sample (*why:* one bad electrode cannot shift the
   reference, unlike the mean; added after round 1, section 10).
 * Notch filters at 60, 120, 180 Hz (US mains), forward-only IIR.
@@ -131,10 +140,12 @@ window, which a live display could also do. Decoded traces share the recorded tr
 percentile after baseline removal), so a decoder that under-shoots is drawn under-shooting.
 
 ### 3.8 Live replay
-For approaches 5, 6 and 9 the trained model is exported to ONNX and the whole recording is replayed in 40-sample
+For approaches 5, 6, 9 and 15 the trained model is exported to ONNX and the whole recording is replayed in 40-sample
 chunks through a streaming feature extractor; outputs match the offline (batch) causal outputs to floating-point
 rounding; one step takes 0.7-0.9 ms on one CPU thread (`streaming.py`, `export.py`,
-`tests/test_pipeline.py::test_live_replay_matches_offline`).
+`tests/test_pipeline.py::test_live_replay_matches_offline`). `online.OnlineDecoder` packages the same steps for use
+on new data (`fit`, `step`, `decode`, ONNX export); chunk-by-chunk output equals the batch prediction
+(`tests/test_online.py`).
 
 ---
 
@@ -156,13 +167,73 @@ rounding; one step takes 0.7-0.9 ms on one CPU thread (`streaming.py`, `export.p
 | 2 | Flamary & Rakotomamonjy, 2nd place (live re-implementation) | 0.451 | 0.475 | 0.261 | 0.539 | 0.425 | 0.000 |
 | 3 | Wiener filter (lagged ridge regression) | 0.424 | 0.418 | 0.296 | 0.532 | 0.415 | 0.000 |
 | 6 | S4D state-space model | 0.397 | 0.342 | 0.303 | 0.574 | 0.406 | 0.013 |
+| 14 | FingerFlex (Lomtev et al., 2023), made causal | 0.484 | 0.362 | 0.315 | 0.506 | 0.394 | 0.012 |
 | 4 | Kalman filter | 0.368 | 0.419 | 0.199 | 0.502 | 0.373 | 0.000 |
 | 1 | Liang & Bougrain, 2008 winner (live re-implementation) | 0.485 | 0.464 | 0.278 | 0.347 | 0.363 | 0.000 |
 | 8 | Neural ODE (continuous-time dynamics) | 0.341 | 0.182 | 0.120 | 0.489 | 0.264 | 0.014 |
+| 15 | POSSM-style electrode-token decoder (after Ryoo et al., 2025) | 0.127 | 0.029 | 0.078 | 0.177 | 0.095 | 0.004 |
 
 `Test r` is the mean over the three subjects of single-model scores (networks: mean over 3 seeds; `SD` is the SD
 over seeds of the three-subject score; closed-form decoders are deterministic). `Validation r` is the score on the
 validation block that drove every choice; it is optimistic because choices were made on it (section 11).
+
+### 4.1 Uncertainty from the test data (post hoc, `scripts/posthoc.py`)
+The SD over seeds measures training randomness, not how much the score would change with other test data. A paired
+block bootstrap resamples the 50 four-second blocks of each patient's test segment (about one cue and its rest),
+the same blocks for every approach, 2,000 times, and recomputes the official score exactly from per-block sums
+(seed-0 models; the lag, envelope and within-movement columns are explained in 4.2).
+
+| Approach | Test r, seed 0 | 95 % interval (test blocks resampled) | Lag at peak (ms) | Envelope r | Within-movement r |
+|---|---|---|---|---|---|
+| lstm_selected | 0.541 | 0.507 to 0.571 | 77 | 0.622 | 0.435 |
+| manifold_pca | 0.500 | 0.461 to 0.535 | 77 | 0.570 | 0.405 |
+| manifold_contrastive | 0.490 | 0.452 to 0.525 | 67 | 0.547 | 0.405 |
+| lstm | 0.479 | 0.446 to 0.509 | 77 | 0.544 | 0.405 |
+| tcn | 0.476 | 0.445 to 0.502 | 103 | 0.545 | 0.346 |
+| pretrained_lstm | 0.476 | 0.439 to 0.507 | 63 | 0.528 | 0.396 |
+| multipatient_lstm | 0.473 | 0.432 to 0.508 | 63 | 0.534 | 0.384 |
+| gated_transient | 0.458 | 0.428 to 0.486 | 83 | 0.542 | 0.381 |
+| mamba | 0.456 | 0.424 to 0.480 | 133 | 0.551 | 0.336 |
+| gated_lfp | 0.447 | 0.419 to 0.470 | 117 | 0.527 | 0.361 |
+| gated_all | 0.429 | 0.399 to 0.451 | 133 | 0.513 | 0.326 |
+| switching_linear | 0.425 | 0.394 to 0.449 | 173 | 0.544 | 0.272 |
+| wiener | 0.415 | 0.392 to 0.434 | 90 | 0.494 | 0.377 |
+| s4d | 0.415 | 0.387 to 0.442 | 83 | 0.499 | 0.335 |
+| fingerflex | 0.404 | 0.367 to 0.438 | 80 | 0.459 | 0.307 |
+| kalman | 0.373 | 0.348 to 0.395 | 93 | 0.449 | 0.298 |
+| liang_bougrain | 0.363 | 0.337 to 0.449 | 93 | 0.446 | 0.335 |
+| neural_ode | 0.279 | 0.253 to 0.304 | 180 | 0.329 | 0.203 |
+| possm | 0.090 | 0.058 to 0.123 | 243 | 0.120 | 0.102 |
+
+| A | B | A minus B | 95 % interval | Share of resamples with A <= B |
+|---|---|---|---|---|
+| lstm_selected | lstm | +0.062 | +0.029 to +0.094 | 0.000 |
+| lstm_selected | fingerflex | +0.137 | +0.091 to +0.183 | 0.000 |
+| lstm_selected | possm | +0.450 | +0.406 to +0.491 | 0.000 |
+| lstm | mamba | +0.023 | -0.007 to +0.060 | 0.064 |
+| lstm | tcn | +0.003 | -0.027 to +0.035 | 0.392 |
+| lstm | s4d | +0.063 | +0.029 to +0.101 | 0.000 |
+| lstm | wiener | +0.063 | +0.038 to +0.092 | 0.000 |
+| lstm | possm | +0.388 | +0.345 to +0.430 | 0.000 |
+| wiener | liang_bougrain | +0.052 | -0.038 to +0.069 | 0.100 |
+| wiener | kalman | +0.042 | +0.027 to +0.056 | 0.000 |
+
+### 4.2 What the decoders get right and wrong (post hoc)
+* **Lag.** Correlation between decoded and recorded flexion as the decoded trace is shifted by -400 to +400 ms:
+  the live decoders peak 60-180 ms late (approach 5b: 70 ms on the mean curve; the POSSM-style decoder, which
+  barely decodes, 240 ms), the offline winner replica at +10 ms. Shifted back by its lag, approach 5b would score about 0.58 instead of 0.54 (seed 0).
+* **Envelope against shape.** r of the movement envelope (both traces averaged over 1 s) and r within movements
+  only (samples where that finger is flexed above 25 % of its range): for approach 5b 0.62 and 0.43.
+* **Which finger.** Decoded-against-recorded correlations off the diagonal are about as large as the recorded
+  fingers' own correlations (index with middle and ring, ring with little), so the decoders add little cross-talk
+  beyond what the hand itself does (`results/figures/fingers_sub3.png`).
+* **Masking.** The online artefact rule fired rarely:
+
+| Subject | Steps with any electrode masked | Electrode-steps masked | Electrodes ever masked |
+|---|---|---|---|
+| 1 | 0.46 % | 0.012 % | 21 |
+| 2 | 1.76 % | 0.053 % | 19 |
+| 3 | 8.50 % | 0.147 % | 22 |
 
 ---
 
@@ -186,9 +257,11 @@ validation block that drove every choice; it is optimistic because choices were 
 | 11b | Multi-patient supervised pretraining | As 11, pretrained with labels. |
 | 12 | Manifold-gated decoder, PCA | Own design: features projected on an 8-D PCA manifold (fitted on training rows); a gate integrates the manifold trajectory and weights six read-outs of a shared 128-unit LSTM (dropout 0.4, same augmentation as 5). |
 | 13 | Manifold-gated decoder, CEBRA-style | As 12, but the manifold is learned contrastively with finger kinematics as the auxiliary variable (CEBRA-behaviour; Schneider et al., 2023), fitted on training rows and frozen. |
+| 14 | FingerFlex, made causal | The best published result on these data, re-implemented (section 9) and made causal: causal filters, Morlet wavelets delayed by half their length, left-padded convolutions, pooling windows that end at the current sample, hold upsampling; statistics from training rows; epoch (at most 20, stop after 5 without improvement) and output smoother chosen on validation. The published 200 ms ECoG-to-glove shift is dropped (a causal decoder that kept it would ignore the latest 200 ms of signal; the paper reports the shift is not critical). |
+| 15 | POSSM-style decoder | After POSSM (Ryoo et al., 2025; Mila), a real-time decoder built for transfer across sessions and subjects: one token per electrode (shared projection of its six features plus a learned electrode embedding), four latent queries cross-attending to the tokens of the current step only, a 256-unit GRU and a linear read-out; trained with approach 5's recipe. **It did not learn on these data** (validation 0.13, test 0.09): its validation score peaks within a few epochs. A validation-only check (`scripts/possm_validation.py`, `results/validation_study_r8_possm_*.json`) of unit-scale electrode embeddings (0.12) and eight latents (0.13) did not help, so the approach was left as run. Routing information through attention over electrode tokens needs more data or training than 6.5 minutes of one patient give; POSSM itself is pretrained on many sessions. A multi-patient pretrained variant (15b) was stopped before it produced a score and removed. |
 
 Left out, with reasons: **LFADS** infers each moment from the whole trial, past and future, so it cannot run live as
-published; **seed or model averaging** (section 3.5); **FingerFlex** as a live decoder (non-causal by design; section 9).
+published; **seed or model averaging** (section 3.5).
 
 ### 5.1 How approach 5 and 5b were chosen (validation only)
 
@@ -265,6 +338,51 @@ score (0.68 on validation, 0.55 on test).
 Both LSTMs lose 0.11-0.13 when their most informative electrode is silenced for the whole test segment. Training
 with electrode dropout would buy robustness at a price in validation accuracy (0.62 to 0.59-0.60), so it was not
 used for the headline; for an implant that trade-off should be made deliberately.
+
+Electrode-loss curve (`scripts/robustness_curve.py`; seed-0 models of approach 5 (`lstm`) and 5b
+(`lstm_selected`), retrained for this study, and 5b trained with electrode dropout (`lstm_selected_dropout`: each
+electrode silenced with probability 0.1 in every training window); mean of the three patients): electrodes
+silenced best first (by the training-data ranking of approach 5b), or at random from all of the patient's
+electrodes (20 draws).
+
+| Decoder | Intact | 1 lost (best first) | 2 | 4 | 8 | 4 lost at random | 16 lost at random |
+|---|---|---|---|---|---|---|---|
+| lstm | 0.483 | 0.378 | 0.351 | 0.181 | 0.095 | 0.452 | 0.398 |
+| lstm_selected | 0.544 | 0.402 | 0.355 | 0.168 | 0.058 | 0.509 | 0.445 |
+| lstm_selected_dropout | 0.544 | 0.449 | 0.404 | 0.211 | 0.101 | 0.517 | 0.469 |
+
+Decoding rests on a few electrodes: losing the best one costs 5b 0.14 and approach 5 0.10, and with the best four
+gone every decoder falls to about 0.2. Random failures cost far less (16 random electrodes: 0.07-0.10), because most
+electrodes carry little information about the fingers. Electrode dropout, rejected on validation (above), keeps the
+intact test score (0.544) and degrades more slowly (0.449 with the best electrode lost, against 0.402). It stays out
+of the headline, because every choice is made on validation (section 3.2), but for an implant it is the better
+default. The intact scores differ slightly from the table above because the models were retrained on another
+machine (section 11).
+
+### 5.3 Calibration data (post hoc, `scripts/calibration.py`)
+Test r against minutes of the patient's own training data: the last D minutes before the test segment (so the gap
+to the test segment stays the same), split 80/20 for every choice and refitted on all D minutes. `lstm_others`: an
+LSTM whose recurrent core was pretrained with labels on the other two patients' whole training segments (as
+approach 11b, which pretrains on all three), then fine-tuned on the D minutes with a fresh input layer: a new
+patient joining a pretrained model. Mean of three patients; ± SD over seeds (the Wiener filter is deterministic).
+
+| Approach | 1 min | 2 min | 4 min | 6.5 min (all) |
+|---|---|---|---|---|
+| lstm | 0.290 ± 0.009 | 0.309 ± 0.030 | 0.412 ± 0.013 | 0.493 ± 0.018 |
+| lstm_others | 0.216 ± 0.023 | 0.281 ± 0.019 | 0.371 ± 0.010 | 0.444 ± 0.009 |
+| lstm_selected | 0.345 ± 0.016 | 0.409 ± 0.017 | 0.504 ± 0.024 | 0.546 ± 0.014 |
+| wiener | 0.276 | 0.311 | 0.371 | 0.415 |
+
+* **More data still helps at 6.5 minutes.** No decoder levels off: the last 2.5 minutes add 0.04 to 5b and 0.08 to
+  approach 5.
+* **Choosing electrodes is worth more than minutes of data.** 5b with 4 minutes (0.504) beats approach 5 with all
+  6.5 (0.493); with 1 minute (0.345) it comes close to the live 2008 winner with all of it (0.363).
+* **Pretraining on the other two patients does not help.** `lstm_others` is below the LSTM trained from scratch at
+  every amount (0.216 against 0.290 with 1 minute, 0.444 against 0.493 with all), just as approach 11b gains
+  nothing over approach 5 (section 4). Two patients with different grids are too few to learn a shared code; a
+  library with many more patients (Miller, 2019) would test this properly.
+* The 6.5-minute column retrains the benchmark's models on another machine: the Wiener filter reproduces section 4
+  exactly, the networks differ slightly (section 11).
 
 ---
 
@@ -442,8 +560,46 @@ centred Gaussian (as FingerFlex does):
   features +0.014, and +0.046 with 400 ms of future lags as well, for the Wiener filter; interpolating between steps +0.019 (+0.029
   with a centred 60 ms Gaussian as well), and picking the stopping epoch on the test set +0.042 for approach 5b. Each is
   a few hundredths; together they are of the same order as the gap between the best live decoder here (0.554) and
-  the best published offline result (0.67). FingerFlex was not retrained (section 9), so this is indicative.
+  the best published offline result (0.67); section 7.7 measures FingerFlex itself.
 * None of these analyses changed any live decoder or any reported live score.
+
+### 7.7 FingerFlex, retrained (`offline_study.py --parts fingerflex`, approach 14)
+Offline, as published, each seed trained twice from the same initial weights: run A on all training data with the
+test recording decoded after every epoch (the published procedure keeps the epoch with the best test
+correlation); run B on the first 80 % with the epoch chosen by the same criterion on the last 20 %. Run A trained
+for run B's number of epochs is the refit, so its test output there is the offline score without test-set
+selection.
+
+| FingerFlex, offline | S1 | S2 | S3 | Mean (seed 0) | Notebook metric | Epochs kept (per subject) |
+|---|---|---|---|---|---|---|
+| as published: epoch with the best test correlation | 0.676 | 0.549 | 0.656 | 0.627 | 0.626 | S1: 19; S2: 5; S3: 2 |
+| epoch chosen on validation | 0.646 | 0.540 | 0.603 | 0.596 | 0.593 | S1: 11; S2: 8; S3: 8 |
+
+Seeds: 0. Competition metric (1 kHz, ring finger excluded); the notebook metric is the authors' own (100 Hz, all five fingers, Gaussian sigma 1 sample).
+
+Retrained with the published procedure, FingerFlex scores 0.627 (seed 0; each replica takes four to six hours, so
+one seed was run), below its reported 0.67 and the independent reproduction's 0.642 over three seeds. The authors'
+own metric gives the same value (0.626), so the gap is not a matter of scoring. Keeping the epoch chosen on
+validation instead of the one with the best test correlation costs 0.031 (0.596): the test-picked epochs (19, 5
+and 2) are not the ones validation picks (11, 8 and 8).
+
+### 7.8 Designed offline or designed live
+The same comparison from both sides: a method designed offline (the winner) made causal, and the best method
+designed live (approach 5b) given every offline liberty (`scripts/offline_lstm.py`: zero-phase centred features, a
+bidirectional LSTM over the whole recording, a centred Gaussian smoother chosen on validation, interpolation
+between outputs; same electrode counts, three seeds).
+
+| Method | Designed for | Scored offline | Scored live | Cost of running live |
+|---|---|---|---|---|
+| Liang and Bougrain, 2008 winner | offline | 0.450 (replica) | 0.363 (approach 1) | -0.087 |
+| FingerFlex (Lomtev et al., 2023) | offline | 0.596 (epoch chosen on validation; seed 0) | 0.394 ± 0.012 (approach 14) | -0.202 |
+| LSTM on selected electrodes | live | 0.617 ± 0.014 (bidirectional, zero-phase) | 0.554 ± 0.010 (approach 5b) | -0.063 |
+
+The two methods designed offline lose 0.09 (the 2008 winner) and 0.20 (FingerFlex) when they must run
+causally; the method designed live gains only 0.06 when it is given every offline liberty. FingerFlex looks ahead
+in every layer (zero-phase filters, symmetric convolutions over 2.56 s windows, whole-recording inference); made
+causal, it keeps its architecture but loses that context, and falls below a plain LSTM (section 4). A decoder that
+has to run live is best designed and selected live.
 
 ---
 
@@ -454,6 +610,8 @@ centred Gaussian (as FingerFlex does):
   traces.
 * `live_vs_offline_sub3.mp4`: three hands on the same 200 s - recorded, live (approach 5b, seed 0), offline (the
   winner's method as published) - and their traces. The r values in the labels are for the raw decoder outputs.
+* `lstm_live_vs_offline_sub3.mp4`: the same layout with approach 5b live and the same LSTM given every offline
+  liberty (section 7.8), both seed 0: the best live and the best offline decoder here, on the same 200 s.
 * The GIFs in the README are 16 s excerpts (60-76 s, a window chosen in an earlier round because all five fingers move
   in it, not for decoding quality).
 * Display rules: section 3.7. The hand (`handviz.py`) is a kinematic model: three tapered segments per finger
@@ -463,13 +621,21 @@ centred Gaussian (as FingerFlex does):
 
 ---
 
-## 9. FingerFlex was not retrained, and why
-Its preprocessing needs MNE Morlet wavelets on 62 electrodes x 40 frequencies, and its training uses every 256-sample
-window at stride 1 (about 40,000 windows per epoch, 20 epochs). The first convolution alone is about 61 million
-multiply-adds per window, so an epoch costs on the order of 15 TFLOP; on the two CPU cores available here that is
-roughly 1.5-2 hours per subject per seed, versus minutes on a GPU. Its official code and an independent reproduction
-(section 7.1) document both its 0.67 and the conditions behind it; retraining it, with the checkpoint chosen on a
-validation block instead of the test set and with causal convolutions, is the natural next experiment on a GPU.
+## 9. FingerFlex, re-implemented
+From the paper (arXiv:2211.01960 v2) and the authors' notebooks, which have no licence, so no code was copied
+(`src/ecogdecode/fingerflex.py`). As published: each recording z-scored with its own statistics and median
+re-referenced; MNE-style zero-phase FIR band-pass 40-300 Hz (331 taps, -6 dB at 35 and 337.5 Hz) and notches at the
+50 Hz harmonics (6601 taps; the notebooks notch 50 Hz although the recordings are from the USA, kept as
+published); 40 Morlet wavelets log-spaced 40-300 Hz (7 cycles, power), kept every 10 ms; robust scaling (10th to
+90th percentile) fitted on training data; fingers cubic-interpolated from 25 to 100 Hz and min-max scaled; ECoG
+paired with the fingers 200 ms later. Network: the notebooks' `AutoEncoder1D` (660,293 parameters for 64
+electrodes; tested), half MSE plus half cosine distance, Adam (lr 8.42e-5, weight decay 1e-6), batch 128, every
+2.56 s window at stride 1, 20 epochs; whole-recording inference; centred Gaussian smoothing (sigma 6 samples for
+checkpoint selection, 1 sample at test). The first convolution is computed as one matrix product per time step
+and a shift-and-add (identical weights and outputs, tested; about 3x faster on a CPU). Deviations: seeds 0-2 (the
+notebooks set none); epoch-selection runs stop after 5 epochs without improvement; the network runs in eval mode
+at test time (the notebooks' test path does not switch dropout off). Each run took one to six hours on four CPU
+threads of a laptop that ran other studies at the same time.
 
 ---
 
@@ -495,6 +661,22 @@ validation block instead of the test set and with causal convolutions, is the na
 7. **Round 7:** display only: full-length videos, no display smoothing, each trace drawn relative to its own
    resting level, a redrawn hand. No model, score or test look changed.
 
+8. **Round 8** (after an outside review): new approaches 14 (FingerFlex, causal) and 15 (POSSM-style), each fixed
+   and committed before it was scored on the test set (FingerFlex ran as nine processes, one per patient and seed);
+   15 failed and was not revised, and a variant 15b was stopped before it produced a score. Also offline FingerFlex
+   (both epoch rules, seed 0), offline 5b and post-hoc analyses (bootstrap, lag, cross-finger, masking, calibration
+   curve, electrode-loss curve). From this round every look is logged with its git commit in
+   `results/test_looks.jsonl`, including runs stopped before they produced a score (memory limits, reordering): one
+   FingerFlex process, restarted unchanged; 15b; and four calibration processes. The calibration study was then
+   restarted with a different pretrained decoder (an LSTM pretrained on the other patients instead of the
+   POSSM-style decoder, which had failed), so no calibration result predates that change. The log records the
+   commit at the start of a run, each results file the commit at its end; for long runs the two differ (the seed-0
+   FingerFlex runs started at 3dd2a91), and the commits in between change nothing on their path that affects a
+   model or a score (compared function by function: formatting, and the test labels kept out of the training
+   arrays). Figure, video and verification scripts read the labels only to draw recorded traces or recompute stored
+   scores; they log their reads from the end of this round. No earlier approach or score was changed. Code changes
+   in this round that touch every approach were verified not to change any stored score (`verify_scores.py`).
+
 Every choice inside each round was made on validation data, but repeated looks at the same test set across rounds
 can make the final live numbers slightly optimistic. The earlier README claim that contrastive pretraining scored
 0.53 came from averaging three models; it was withdrawn in round 4.
@@ -509,6 +691,18 @@ can make the final live numbers slightly optimistic. The earlier README claim th
   scores are a faithful attempt, not a reproduction of the submitted 0.42.
 * Glove super-sampling to 1 kHz is not documented by the organisers; predictions are held (live) or linearly
   interpolated (offline) between 40 ms steps.
+* Pseudo-online, open loop: the user never saw the decoder's output, so closed-loop adaptation is not measured.
+* Electrode positions are not part of the data set; electrode maps are by index.
+* The bootstrap intervals cover test-sample variability for fixed seed-0 models; they do not cover the choice of
+  approach across rounds or the per-patient electrode counts of 5b.
+* Two machines: approaches 1-13 were trained on a Linux virtual machine, approaches 14 and 15 and every round-8
+  study on a Windows laptop. Retraining with the same seed is not bit-identical across them (floating-point results
+  depend on the CPU, the maths library and the thread count). In the 6.5-minute column of section 5.3, which
+  retrains the benchmark's models on the laptop, the Wiener filter reproduces section 4 exactly; approach 5 stops at
+  the same epoch in all nine patient-seed runs and scores within 0.013; approach 5b, with the same electrodes, stops
+  at a different epoch in five of nine and scores within 0.04 (three-patient score 0.546 ± 0.014 against
+  0.554 ± 0.010).
+* The offline FingerFlex replica was run with one seed (four to six hours per run).
 
 ## 12. What a reviewer should check first
 1. Causality of live features and models: `tests/test_features.py`, `tests/test_models.py` (future changes must not
@@ -517,12 +711,17 @@ can make the final live numbers slightly optimistic. The earlier README claim th
    `fit_rows`/`val_rows` for every choice and `train_rows` for the refit; `top_electrodes` sees only the rows passed.
 3. Scores: `evaluation.score_test` / `pipeline.evaluate` (hold to 1 kHz, four fingers) and `offline.score_1khz`.
    `scripts/verify_scores.py` recomputes every stored seed-0 and replica score from the saved predictions; the run
-   in `results/logs/verify_scores.log` reproduces all of them (largest difference 7e-10, apart from two flagged
-   cases where the saved predictions are at a lower rate than the scored output).
+   in `results/logs/verify_scores.log` reproduces all of them (largest difference 7e-10), apart from flagged
+   cases whose saved predictions are coarser than the output that was scored: the causal winner replica (up
+   to 0.010), the second-place replica and the round-8 offline runs (up to 0.002).
 4. Replica fidelity: compare `offline.py` docstrings with the papers (links in section 13).
-5. The claims about FingerFlex's code: the two notebooks in its repository.
+5. The claims about FingerFlex's code: the two notebooks in its repository; the re-implementation in
+   `fingerflex.py` and its tests (`tests/test_fingerflex.py`).
+6. Every test look of round 8: `results/test_looks.jsonl` against the git history.
 
 ## 13. References
+* Ryoo AH, Krishna NH, Mao X, Azabou M, Dyer EL, Perich MG, Lajoie G (2025). Generalizable, real-time neural decoding with hybrid state-space models. NeurIPS. arXiv:2506.05320.
+* Azabou M, et al. (2023). A unified, scalable framework for neural population decoding (POYO). NeurIPS.
 * Schalk G, et al. (2007). Decoding two-dimensional movement trajectories using electrocorticographic signals in humans. J Neural Eng 4:264-275 (required citation for the data).
 * Miller KJ, Schalk G (2008). BCI Competition IV, data set 4 description. <https://bbci.de/competition/iv/desc_4.pdf>
 * BCI Competition IV results. <https://www.bbci.de/competition/iv/results/>

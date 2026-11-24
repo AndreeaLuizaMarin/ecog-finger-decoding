@@ -13,8 +13,17 @@
 | offline1.log | non-causal smoothing; first version of the replicas (second-place replica later revised) |
 | offline2.log | second-place replica (revised), Wiener live vs offline, stopping epoch on test |
 | offline3.log | subject-3 diagnostic without electrode 49 |
+| r8_fingerflex_causal_s{S}_seed{N}.log | round 8: approach 14 (FingerFlex, causal), one process per patient and seed; a repeated `start` line marks a process stopped before it produced a score and started again |
+| r8_fingerflex_offline_s{S}_seed0.log | round 8: FingerFlex as published and with the epoch chosen on validation (seed 0) |
+| r8_possm.log | round 8: approach 15 (POSSM-style), blind test |
+| r8_possm_pretrained.log | round 8: approach 15b, stopped before it wrote any output (empty) |
+| r8_possm_validation_scale1.log, r8_possm_validation_latents8.log | round 8: approach 15 variants, validation only |
+| r8_offline_lstm.log | round 8: approach 5b given every offline liberty |
+| r8_calibration_s{S}_seed{N}.log, r8_calibration_summary.log | round 8: calibration curve |
+| r8_robustness_curve.log | round 8: electrode-loss curve |
+| r8_posthoc.log | round 8: bootstrap, lag, which finger, masking |
 | verify_scores.log | every stored score recomputed from the saved predictions |
 
-Warnings were stripped. The first version of the second-place replica (offline1.log: 0.165 / 0.168 / 0.325) tuned
+Warnings were stripped, and the round-8 logs (written on Windows) converted to UTF-8. The first version of the second-place replica (offline1.log: 0.165 / 0.168 / 0.325) tuned
 its state classifier by balanced accuracy only and used one label definition; it was revised to tune by the whole
 decoder's validation correlation, as the paper describes for K, before its final result (offline2.log) was taken.

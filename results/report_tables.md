@@ -16,9 +16,11 @@
 | 2 | Flamary & Rakotomamonjy, 2nd place (live re-implementation) | 0.451 | 0.475 | 0.261 | 0.539 | 0.425 | 0.000 |
 | 3 | Wiener filter (lagged ridge regression) | 0.424 | 0.418 | 0.296 | 0.532 | 0.415 | 0.000 |
 | 6 | S4D state-space model | 0.397 | 0.342 | 0.303 | 0.574 | 0.406 | 0.013 |
+| 14 | FingerFlex (Lomtev et al., 2023), made causal | 0.484 | 0.362 | 0.315 | 0.506 | 0.394 | 0.012 |
 | 4 | Kalman filter | 0.368 | 0.419 | 0.199 | 0.502 | 0.373 | 0.000 |
 | 1 | Liang & Bougrain, 2008 winner (live re-implementation) | 0.485 | 0.464 | 0.278 | 0.347 | 0.363 | 0.000 |
 | 8 | Neural ODE (continuous-time dynamics) | 0.341 | 0.182 | 0.120 | 0.489 | 0.264 | 0.014 |
+| 15 | POSSM-style electrode-token decoder (after Ryoo et al., 2025) | 0.127 | 0.029 | 0.078 | 0.177 | 0.095 | 0.004 |
 
 ## VALIDATION
 
@@ -147,5 +149,86 @@
 | centred Gaussian, sigma 40 ms, interpolated | 0.556 | 0.488 | 0.652 | 0.566 |
 | centred Gaussian, sigma 60 ms, interpolated | 0.569 | 0.490 | 0.650 | 0.570 |
 | centred Gaussian, sigma 120 ms, interpolated | 0.584 | 0.489 | 0.638 | 0.570 |
+
+## FINGERFLEX
+
+| FingerFlex, offline | S1 | S2 | S3 | Mean (seed 0) | Notebook metric | Epochs kept (per subject) |
+|---|---|---|---|---|---|---|
+| as published: epoch with the best test correlation | 0.676 | 0.549 | 0.656 | 0.627 | 0.626 | S1: 19; S2: 5; S3: 2 |
+| epoch chosen on validation | 0.646 | 0.540 | 0.603 | 0.596 | 0.593 | S1: 11; S2: 8; S3: 8 |
+
+Seeds: 0. Competition metric (1 kHz, ring finger excluded); the notebook metric is the authors' own (100 Hz, all five fingers, Gaussian sigma 1 sample).
+
+## TWO_BY_TWO
+
+| Method | Designed for | Scored offline | Scored live | Cost of running live |
+|---|---|---|---|---|
+| Liang and Bougrain, 2008 winner | offline | 0.450 (replica) | 0.363 (approach 1) | -0.087 |
+| FingerFlex (Lomtev et al., 2023) | offline | 0.596 (epoch chosen on validation; seed 0) | 0.394 ± 0.012 (approach 14) | -0.202 |
+| LSTM on selected electrodes | live | 0.617 ± 0.014 (bidirectional, zero-phase) | 0.554 ± 0.010 (approach 5b) | -0.063 |
+
+## BOOTSTRAP
+
+| Approach | Test r, seed 0 | 95 % interval (test blocks resampled) | Lag at peak (ms) | Envelope r | Within-movement r |
+|---|---|---|---|---|---|
+| lstm_selected | 0.541 | 0.507 to 0.571 | 77 | 0.622 | 0.435 |
+| manifold_pca | 0.500 | 0.461 to 0.535 | 77 | 0.570 | 0.405 |
+| manifold_contrastive | 0.490 | 0.452 to 0.525 | 67 | 0.547 | 0.405 |
+| lstm | 0.479 | 0.446 to 0.509 | 77 | 0.544 | 0.405 |
+| tcn | 0.476 | 0.445 to 0.502 | 103 | 0.545 | 0.346 |
+| pretrained_lstm | 0.476 | 0.439 to 0.507 | 63 | 0.528 | 0.396 |
+| multipatient_lstm | 0.473 | 0.432 to 0.508 | 63 | 0.534 | 0.384 |
+| gated_transient | 0.458 | 0.428 to 0.486 | 83 | 0.542 | 0.381 |
+| mamba | 0.456 | 0.424 to 0.480 | 133 | 0.551 | 0.336 |
+| gated_lfp | 0.447 | 0.419 to 0.470 | 117 | 0.527 | 0.361 |
+| gated_all | 0.429 | 0.399 to 0.451 | 133 | 0.513 | 0.326 |
+| switching_linear | 0.425 | 0.394 to 0.449 | 173 | 0.544 | 0.272 |
+| wiener | 0.415 | 0.392 to 0.434 | 90 | 0.494 | 0.377 |
+| s4d | 0.415 | 0.387 to 0.442 | 83 | 0.499 | 0.335 |
+| fingerflex | 0.404 | 0.367 to 0.438 | 80 | 0.459 | 0.307 |
+| kalman | 0.373 | 0.348 to 0.395 | 93 | 0.449 | 0.298 |
+| liang_bougrain | 0.363 | 0.337 to 0.449 | 93 | 0.446 | 0.335 |
+| neural_ode | 0.279 | 0.253 to 0.304 | 180 | 0.329 | 0.203 |
+| possm | 0.090 | 0.058 to 0.123 | 243 | 0.120 | 0.102 |
+
+## PAIRED
+
+| A | B | A minus B | 95 % interval | Share of resamples with A <= B |
+|---|---|---|---|---|
+| lstm_selected | lstm | +0.062 | +0.029 to +0.094 | 0.000 |
+| lstm_selected | fingerflex | +0.137 | +0.091 to +0.183 | 0.000 |
+| lstm_selected | possm | +0.450 | +0.406 to +0.491 | 0.000 |
+| lstm | mamba | +0.023 | -0.007 to +0.060 | 0.064 |
+| lstm | tcn | +0.003 | -0.027 to +0.035 | 0.392 |
+| lstm | s4d | +0.063 | +0.029 to +0.101 | 0.000 |
+| lstm | wiener | +0.063 | +0.038 to +0.092 | 0.000 |
+| lstm | possm | +0.388 | +0.345 to +0.430 | 0.000 |
+| wiener | liang_bougrain | +0.052 | -0.038 to +0.069 | 0.100 |
+| wiener | kalman | +0.042 | +0.027 to +0.056 | 0.000 |
+
+## MASKING
+
+| Subject | Steps with any electrode masked | Electrode-steps masked | Electrodes ever masked |
+|---|---|---|---|
+| 1 | 0.46 % | 0.012 % | 21 |
+| 2 | 1.76 % | 0.053 % | 19 |
+| 3 | 8.50 % | 0.147 % | 22 |
+
+## CALIBRATION
+
+| Approach | 1 min | 2 min | 4 min | 6.5 min (all) |
+|---|---|---|---|---|
+| lstm | 0.290 ± 0.009 | 0.309 ± 0.030 | 0.412 ± 0.013 | 0.493 ± 0.018 |
+| lstm_others | 0.216 ± 0.023 | 0.281 ± 0.019 | 0.371 ± 0.010 | 0.444 ± 0.009 |
+| lstm_selected | 0.345 ± 0.016 | 0.409 ± 0.017 | 0.504 ± 0.024 | 0.546 ± 0.014 |
+| wiener | 0.276 | 0.311 | 0.371 | 0.415 |
+
+## ELECTRODE_LOSS
+
+| Decoder | Intact | 1 lost (best first) | 2 | 4 | 8 | 4 lost at random | 16 lost at random |
+|---|---|---|---|---|---|---|---|
+| lstm | 0.483 | 0.378 | 0.351 | 0.181 | 0.095 | 0.452 | 0.398 |
+| lstm_selected | 0.544 | 0.402 | 0.355 | 0.168 | 0.058 | 0.509 | 0.445 |
+| lstm_selected_dropout | 0.544 | 0.449 | 0.404 | 0.211 | 0.101 | 0.517 | 0.469 |
 
 (generated from the JSON files in results/; numbers rounded to 3 decimals)
