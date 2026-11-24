@@ -175,8 +175,8 @@ python scripts/verify_scores.py --data-dir data           # recompute every stor
 ```
 
 The other studies (validation search, calibration, electrode loss, offline LSTM) and their run times are listed in
-[CLAUDE.md](CLAUDE.md). Use at most about six PyTorch threads per process: on hybrid CPUs the default of one thread
-per logical core is several times slower.
+[METHODS.md](METHODS.md), section 0.1. Use at most about six PyTorch threads per process: on hybrid CPUs the default
+of one thread per logical core is several times slower.
 
 ## Protocol
 

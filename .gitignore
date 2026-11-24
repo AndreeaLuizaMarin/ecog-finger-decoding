@@ -14,9 +14,6 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 .ruff_cache/
-# local Claude Code state (project instructions are in CLAUDE.md, which is tracked)
-.claude/settings.local.json
-.claude/worktrees/
 # full-length videos are published as GitHub release assets, not committed
 results/figures/*.mp4
 # single frames written by the video scripts with --still

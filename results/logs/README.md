@@ -23,6 +23,7 @@
 | r8_robustness_curve.log | round 8: electrode-loss curve |
 | r8_posthoc.log | round 8: bootstrap, lag, which finger, masking |
 | verify_scores.log | every stored score recomputed from the saved predictions |
+| commit_map.txt | original commit hashes (named in the provenance records) mapped to the published ones |
 
 Warnings were stripped, and the round-8 logs (written on Windows) converted to UTF-8. The first version of the second-place replica (offline1.log: 0.165 / 0.168 / 0.325) tuned
 its state classifier by balanced accuracy only and used one label definition; it was revised to tune by the whole

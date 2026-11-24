@@ -1,0 +1,22 @@
+# Before publication the history was rewritten to remove personal and tool metadata (the author's e-mail address,
+# a local configuration file, commit-message trailers); code, data and results are unchanged. Provenance written
+# before that (results/test_looks.jsonl, the environment blocks of the results files, METHODS.md) names the
+# original commits. Each line: original commit, published commit, subject.
+2c8c1dc8f959b1f8b1c184473d3cbd15242c18f8 b1548187887ad576a0a4a7878af610185ba71d88 Causal decoding of finger flexion from human ECoG
+3dd2a910c46ace0f49adaa1453cd1793baaf9cb4 5f84d16f40172dae0f0e95c1afd34d45bf5378c3 Add FingerFlex and a POSSM-style decoder
+51912a8da3bf46708aca1ad65c8e3ac23d9245a4 2bb5b228fccf0ed0ac2efd3273123a79cb37a9ba Add the calibration-curve study (test r against minutes of training data)
+8e6b3bd541c8e2cfe279b956443771dd703e34b5 c7ff232b69f98f5960de6e6a8e1ae50f86a93645 Add the electrode-loss curve and the offline version of approach 5b
+b5ed019167f17714bbc8e78be50c5a5351b6a627 7e70b4f08574a20b199636451616b0b6dd9419c1 Add post-hoc analyses of the saved test predictions
+19f8906d0e0067af554bc5e489d993465c565ceb be54cd4d858e324e44fad8eba4da8406a3711531 Add figures for the post-hoc analyses
+15f4b701a10a32a4058ad00cf5ce9456f00eb11b 7598058d594a02cdbf003c329ed3c3340eae313d Keep test labels out of training arrays; add a streaming decoder API
+bc018048194f4b74f86b634d133a5a7f69fb5c31 c3905b2c41910d5fc8580b90f3baab1b6ff04bfb Enforce lint rules and formatting; test on Linux and Windows
+82a9a3bc8f0e81f2c21ab075e25745a2bee5be98 480e82b18e2bb403057740e6f2782bbc414ce0ee Calibration with cross-patient LSTM pretraining; record the POSSM check
+42cb236eb491e3dc684430817731e28243665f30 253be2830d67f88640ead2110ad0197db3ed9089 Remove approach 15b, which never produced a score
+3ad52c635808a50ca282d5b2bae2b3c314ed4c0a 4799efeeace7672139c2265b73e0b502aadbb4c9 Log every read of the test labels; write reports as UTF-8
+1e64163f980daac6598739697e632e4fbff41f6b 36662300eaa6b0f654417820a18b6a86ea20b4e2 Round 8 results: FingerFlex, POSSM-style decoder, calibration, electrode loss
+fbd0c6eb3a8637575d6cc03e0444fe93c029dc45 b2d4cb3648ce9a2db488ec120ec2febd9d485835 Post-hoc figures: approach 5b first in every legend
+acaaa2f510a24212e07dc1e420375e11d9c85cfe c3fd73bee6f7a776a6d9c5a211a2e5d3a2ca8802 Overview figure: full short names, readable value on short bars
+a32ef0c5107ebcc4301ecd178f0fb490d8b879a6 158c8eec6ff6c288c9affb5f488449c6ca377f65 Round 8 documentation: README, METHODS and the test-look log
+9ed8118008d42a111015c7376ad4e405150c5b84 c11b4b345a88ab5d3f957d529bea92ef06ccbc7a Do not count the test-look log as an uncommitted change; Inter in every figure
+2fc439572ac3e0f628e4a2f7c9063aed87cb1f35 2cc42245273b1d4afd04279fa08c91006428f52b Figures for round 8, all in Inter
+21a59a51953c11d1e3ec70abc976b6181db8d9a7 090de4d4ee1e332f383253db85bc30d19121e646 Video of approach 5b live next to the same LSTM offline

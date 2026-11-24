@@ -5,8 +5,7 @@ code show, and where every number comes from. Every results table below is print
 `python scripts/report_tables.py` from the JSON files in `results/`, so each value can be re-derived. Section 12 lists
 what a reviewer should check first.*
 
-Author: Andreea Luiza Marin. The code was written with an AI coding assistant (Claude) working on her instructions;
-she directed the project and reviewed the work.
+Author: Andreea Luiza Marin. LLM coding agents were used to write the code, under her direction.
 
 ---
 
@@ -27,13 +26,37 @@ she directed the project and reviewed the work.
 | `results/calibration.json`, `results/calibration/` | test r against minutes of training data (post hoc) |
 | `results/offline/fingerflex.json`, `results/offline/lstm_offline.json` | FingerFlex as published (both epoch rules); approach 5b given every offline liberty |
 | `results/test_looks.jsonl` | one line per script run that read the test labels: time, purpose, git commit, uncommitted changes (from round 8) |
-| `results/figures/` | figures and the two videos (whole test segment; README GIFs are 16 s excerpts) |
+| `results/figures/` | figures and the README GIFs (16 s excerpts; the three whole-segment videos are assets of release v0.1.0) |
 | `results/logs/` | console logs of the long runs (index in `results/logs/README.md`), including `verify_scores.log` |
 | `results/report_tables.md` | the output of `report_tables.py` |
 | `README.md` | the public summary; `METHODS.md` (this file) is the full account |
 
 The competition data are not included; they are free to download from the competition site (section 1). The test
 labels (`true_labels.zip`) were published by the organisers after the competition.
+
+### 0.1 Commands and run times
+
+| Task | Command | Time |
+|---|---|---|
+| Tests (synthetic data, no download) | `pytest` | about 10 min |
+| Lint and format | `ruff check src scripts tests` and `ruff format src scripts tests` | seconds |
+| Recompute every stored score | `python scripts/verify_scores.py --data-dir data` | minutes |
+| Every table of this report from the JSON files | `python scripts/report_tables.py > results/report_tables.md` | seconds |
+| Validation-only study | `python scripts/explore_validation.py --data-dir data --seeds 0 1 2` | hours |
+| Blind-test benchmark | `python scripts/run_benchmark.py --data-dir data --streaming` | about 3.5 h on one core, plus FingerFlex (one to several hours per subject and seed on 4 threads) |
+| Join parts of a split run | `python scripts/merge_runs.py <approach>` | seconds |
+| Summary and `metrics.json` | `python scripts/summarise.py` | seconds |
+| Offline replicas, live versus offline | `python scripts/offline_study.py --data-dir data` (part `fingerflex`: several hours per subject and seed); `python scripts/offline_lstm.py --data-dir data` | hours |
+| Post-hoc analyses (bootstrap, lag, fingers, masking) | `python scripts/posthoc.py --data-dir data` | minutes |
+| Calibration curve | `python scripts/calibration.py --data-dir data --subject S --seed N` per subject and seed, then `--summarise` | about 40 min per process |
+| Electrode-loss curve | `python scripts/robustness_curve.py --data-dir data` | about 30 min |
+| Figures | `python scripts/make_figures.py`; `python scripts/make_posthoc_figures.py` | seconds |
+| Videos, whole test segment | `python scripts/make_animation.py --data-dir data`; `python scripts/make_offline_animation.py`; the same with `--offline lstm_selected_offline --name lstm_live_vs_offline_sub3` | about 6 min each on 2 Linux cores; longer on Windows (one process) |
+| One video frame as PNG | add `--still 70` to either video script | seconds |
+
+Small changes are best tested with `pytest` or a validation-only run, not with the full benchmark. Use at most about
+six PyTorch threads per process (`--threads`): on hybrid CPUs the default of one per logical core is several times
+slower. Videos need `ffmpeg` on the path.
 
 ---
 
@@ -661,7 +684,7 @@ threads of a laptop that ran other studies at the same time.
 7. **Round 7:** display only: full-length videos, no display smoothing, each trace drawn relative to its own
    resting level, a redrawn hand. No model, score or test look changed.
 
-8. **Round 8** (after an outside review): new approaches 14 (FingerFlex, causal) and 15 (POSSM-style), each fixed
+8. **Round 8** (after a critical review of the whole project): new approaches 14 (FingerFlex, causal) and 15 (POSSM-style), each fixed
    and committed before it was scored on the test set (FingerFlex ran as nine processes, one per patient and seed);
    15 failed and was not revised, and a variant 15b was stopped before it produced a score. Also offline FingerFlex
    (both epoch rules, seed 0), offline 5b and post-hoc analyses (bootstrap, lag, cross-finger, masking, calibration
@@ -678,7 +701,10 @@ threads of a laptop that ran other studies at the same time.
    a tracked file, so one look (`make_figures.py` at a32ef0c) is marked dirty although no code had changed; from then
    on the log does not count as an uncommitted change (`provenance.git_state`). No earlier approach or score was
    changed. Code changes in this round that touch every approach were verified not to change any stored score
-   (`verify_scores.py`).
+   (`verify_scores.py`). Before publication the history was rewritten to remove personal and tool metadata (the
+   author's e-mail address, a local configuration file, commit-message trailers); code, data and results are
+   unchanged. The commits named in this report, in `results/test_looks.jsonl` and in the results files are those of
+   the original history; `results/logs/commit_map.txt` maps each to its published commit.
 
 Every choice inside each round was made on validation data, but repeated looks at the same test set across rounds
 can make the final live numbers slightly optimistic. The earlier README claim that contrastive pretraining scored
@@ -720,7 +746,8 @@ can make the final live numbers slightly optimistic. The earlier README claim th
 4. Replica fidelity: compare `offline.py` docstrings with the papers (links in section 13).
 5. The claims about FingerFlex's code: the two notebooks in its repository; the re-implementation in
    `fingerflex.py` and its tests (`tests/test_fingerflex.py`).
-6. Every test look of round 8: `results/test_looks.jsonl` against the git history.
+6. Every test look of round 8: `results/test_looks.jsonl` against the git history (original commits mapped to the
+   published ones in `results/logs/commit_map.txt`).
 
 ## 13. References
 * Ryoo AH, Krishna NH, Mao X, Azabou M, Dyer EL, Perich MG, Lajoie G (2025). Generalizable, real-time neural decoding with hybrid state-space models. NeurIPS. arXiv:2506.05320.
