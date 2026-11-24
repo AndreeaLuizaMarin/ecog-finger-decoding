@@ -54,6 +54,10 @@ plt.rcParams.update(
         "axes.titlelocation": "left",
     }
 )
+for family in ("Inter", "DejaVu Sans"):  # the same font as the post-hoc figures and the videos
+    if any(family in f.name for f in matplotlib.font_manager.fontManager.ttflist):
+        plt.rcParams["font.family"] = family
+        break
 
 
 def causal_ema(x: np.ndarray, tau_ms: float) -> np.ndarray:

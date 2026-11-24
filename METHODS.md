@@ -674,8 +674,11 @@ threads of a laptop that ran other studies at the same time.
    FingerFlex runs started at 3dd2a91), and the commits in between change nothing on their path that affects a
    model or a score (compared function by function: formatting, and the test labels kept out of the training
    arrays). Figure, video and verification scripts read the labels only to draw recorded traces or recompute stored
-   scores; they log their reads from the end of this round. No earlier approach or score was changed. Code changes
-   in this round that touch every approach were verified not to change any stored score (`verify_scores.py`).
+   scores; they log their reads from the end of this round. Once the log itself was committed, each look appended to
+   a tracked file, so one look (`make_figures.py` at a32ef0c) is marked dirty although no code had changed; from then
+   on the log does not count as an uncommitted change (`provenance.git_state`). No earlier approach or score was
+   changed. Code changes in this round that touch every approach were verified not to change any stored score
+   (`verify_scores.py`).
 
 Every choice inside each round was made on validation data, but repeated looks at the same test set across rounds
 can make the final live numbers slightly optimistic. The earlier README claim that contrastive pretraining scored

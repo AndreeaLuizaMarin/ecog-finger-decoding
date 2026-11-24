@@ -25,9 +25,14 @@ def _git(*args: str) -> str:
         return ""
 
 
+LOOK_LOG = "results/test_looks.jsonl"
+
+
 def git_state() -> dict:
-    """The current commit and whether tracked files differ from it."""
-    return {"commit": _git("rev-parse", "HEAD"), "dirty": bool(_git("status", "--porcelain", "--untracked-files=no"))}
+    """The current commit and whether tracked files differ from it. The test-look log does not count: every look
+    appends to it, so counting it would mark each look after the first as made on uncommitted code."""
+    changed = _git("status", "--porcelain", "--untracked-files=no", "--", ":/", f":(top,exclude){LOOK_LOG}")
+    return {"commit": _git("rev-parse", "HEAD"), "dirty": bool(changed)}
 
 
 def environment(threads: int | None = None) -> dict:
@@ -45,7 +50,7 @@ def environment(threads: int | None = None) -> dict:
     return env
 
 
-def record_test_look(purpose: str, detail: dict | None = None, path: str | Path = "results/test_looks.jsonl") -> None:
+def record_test_look(purpose: str, detail: dict | None = None, path: str | Path = LOOK_LOG) -> None:
     """Append one look at the official test labels to the log."""
     entry = {
         "time": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
